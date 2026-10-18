@@ -460,21 +460,6 @@ async function load(spot) {
     return;
   }
   clearTimeout(marineRetry); marineRetry = null;
-  if (!mc) {
-    // Marine API temporarily busy (e.g. rate limited): keep weather, pressure and moon
-    // working, say so in the marine cards, and quietly retry in about a minute.
-    $("wNow").textContent = "-";
-    $("wTrend").innerHTML = "";
-    $("wRows").innerHTML = `<div>${t("marineBusy")}</div>`;
-    spark($("wSpark"), [], [], 0);
-    weekBars($("weekBars"), [], []);
-    $("tNow").textContent = "-";
-    $("tRows").innerHTML = `<div>${t("marineBusy")}</div>`;
-    spark($("tSpark"), [], [], 0);
-    renderMoon();
-    marineRetry = setTimeout(() => load({ ...SPOT }), 60000);
-    return;
-  }
 
   // Right now
   const c = fc.current;
@@ -496,6 +481,22 @@ async function load(spot) {
     : pDiff > 0.7
     ? t("pRising")
     : t("pStable");
+
+  if (!mc) {
+    // Marine API temporarily busy (e.g. rate limited): weather, pressure and moon
+    // still render; the marine cards say so and quietly retry in about a minute.
+    $("wNow").textContent = "-";
+    $("wTrend").innerHTML = "";
+    $("wRows").innerHTML = `<div>${t("marineBusy")}</div>`;
+    spark($("wSpark"), [], [], 0);
+    weekBars($("weekBars"), [], []);
+    $("tNow").textContent = "-";
+    $("tRows").innerHTML = `<div>${t("marineBusy")}</div>`;
+    spark($("tSpark"), [], [], 0);
+    renderMoon();
+    marineRetry = setTimeout(() => load({ ...SPOT }), 60000);
+    return;
+  }
 
   // Waves
   const wVals = mc.hourly.wave_height;
