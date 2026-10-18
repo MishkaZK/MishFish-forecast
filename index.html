@@ -434,6 +434,7 @@ function showErr(msg) { const e = $("errBox"); e.textContent = msg; e.style.disp
 
 async function load(spot) {
   showErr("");
+  SPOT = { ...spot };
   $("place").textContent = spot.label;
   $("latIn").value = spot.lat.toFixed(4);
   $("lonIn").value = spot.lon.toFixed(4);
@@ -453,6 +454,7 @@ async function load(spot) {
     ]);
   } catch (e) {
     showErr(t("errLoad")(e.message));
+    renderMoon();
     return;
   }
 
