@@ -540,11 +540,11 @@ async function load(spot) {
     const cur = h.ocean_current_velocity ? h.ocean_current_velocity[wi] : null;
     const cur3 = h.ocean_current_velocity ? h.ocean_current_velocity[Math.max(0, wi - 3)] : null;
     const curDir = h.ocean_current_direction ? h.ocean_current_direction[wi] : null;
-    $("wTrend").innerHTML = trend(toCm(wNow), toCm(w3), "cm", 10, false, undefined, 0) + " " +
+    $("wTrend").innerHTML = trend(toCm(wNow), toCm(w3), t("cmUnit"), 10, false, undefined, 0) + " " +
       (cur === null || cur === undefined ? "" : trend(cur, cur3, "km/h", 0.1, false, "currentPer3h"));
     $("wRows").innerHTML =
       `<div><span class="k">${t("waveDir")}</span> ${degToCompass(h.wave_direction[wi])} <span dir="ltr">(${Math.round(h.wave_direction[wi])}°)</span></div>` +
-      `<div><span class="k">${t("swell")}</span> <span dir="ltr">${fmt(toCm(h.swell_wave_height[wi]),0)} cm · ${fmt(h.swell_wave_period[wi],0)} s</span> ${t("from")} ${degToCompass(h.swell_wave_direction[wi])}</div>` +
+      `<div><span class="k">${t("swell")}</span> <span dir="ltr">${fmt(toCm(h.swell_wave_height[wi]),0)} ${t("cmUnit")} · ${fmt(h.swell_wave_period[wi],0)} s</span> ${t("from")} ${degToCompass(h.swell_wave_direction[wi])}</div>` +
       (cur === null || cur === undefined
         ? `<div><span class="k">${t("current")}</span> ${t("noCurrent")}</div>`
         : `<div><span class="k">${t("current")}</span> <span dir="ltr">${fmt(cur,1)} km/h (${fmt(cur / 1.852,1)} kn)</span> ${t("toward")} ${degToCompass(curDir)} <span dir="ltr">(${Math.round(curDir)}°)</span></div>`) +
@@ -1036,4 +1036,3 @@ $("geoBtn").click();
 </script>
 </body>
 </html>
-
