@@ -81,6 +81,10 @@ a:hover { color: #00485d; text-decoration-color: currentColor; }
 footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-size: .77rem; }
 #map { height: 320px; border-radius: 12px; border: 1px solid var(--line); }
 #mapSec { grid-column: 1 / -1; }
+#flowSec { grid-column: 1 / -1; }
+#flowWrap { position: relative; }
+#flowMap { height: 380px; border-radius: 12px; border: 1px solid var(--line); }
+#flowCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 12px; }
 .hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
 .hits button { text-align: left; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
 .hits button:hover { background: #dff0f2; }
@@ -121,6 +125,15 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
     <p class="note">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
   </section>
 
+  <section id="flowSec">
+    <h2>Sea currents - live flow</h2>
+    <div id="flowWrap">
+      <div id="flowMap"></div>
+      <canvas id="flowCanvas"></canvas>
+    </div>
+    <p class="note">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
+  </section>
+
   <section id="now">
     <h2>Right now</h2>
     <div class="big" id="nowTemp">-</div>
@@ -143,6 +156,14 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
     <svg class="spark" id="wSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
     <p class="note" style="margin-bottom:4px;">Max wave height per day, next 7 days:</p>
     <svg class="spark" id="weekBars" viewBox="0 0 300 90" style="height:90px;" aria-hidden="true"></svg>
+  </section>
+
+  <section id="tide">
+    <h2>Sea level &amp; tide</h2>
+    <div class="big" id="tNow">-</div>
+    <div class="rows" id="tRows"></div>
+    <svg class="spark" id="tSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <p class="note">The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.</p>
   </section>
 
   <section id="moon">
@@ -169,6 +190,15 @@ const $ = id => document.getElementById(id);
 const fmt = (v, d=1) => (v === null || v === undefined || isNaN(v)) ? "-" : (+v).toFixed(d);
 const degToCompass = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
 const kmhToKn = k => k * 0.539957;
+function dayTime(t) {
+  const d = new Date(t), now = new Date();
+  const hh = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
+  const tomorrow = new Date(now.getTime() + 86400000);
+  const day = d.toDateString() === now.toDateString() ? "today"
+    : d.toDateString() === tomorrow.toDateString() ? "tomorrow"
+    : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+  return day + " " + hh;
+}
 
 function hourIndex(times) {
   const now = Date.now();
@@ -277,11 +307,12 @@ async function load(spot) {
   $("latIn").value = spot.lat.toFixed(4);
   $("lonIn").value = spot.lon.toFixed(4);
   syncMap(spot);
+  syncFlowMap(spot);
   const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m` +
     `&hourly=pressure_msl&past_days=1&forecast_days=2&timezone=auto&wind_speed_unit=kmh`;
   const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}` +
-    `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature,ocean_current_velocity,ocean_current_direction` +
+    `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature,ocean_current_velocity,ocean_current_direction,sea_level_height_msl` +
     `&past_days=1&forecast_days=7&timezone=auto`;
   let fc, mc;
   try {
@@ -338,12 +369,38 @@ async function load(spot) {
       `<div><span class="k">Sea temperature:</span> ${fmt(h.sea_surface_temperature[wi],1)} °C</div>`;
     spark($("wSpark"), h.wave_height.slice(Math.max(0, wi - 23), wi + 1), wTimes, Math.min(23, wi));
     weekBars($("weekBars"), wTimes, h.wave_height);
+
+    // Sea level / tide
+    const sl = h.sea_level_height_msl;
+    if (sl && sl.some(v => v !== null)) {
+      const ti = wi;
+      const sNow = sl[ti];
+      $("tNow").innerHTML = `${fmt(sNow,2)}<small> m vs mean sea level</small>`;
+      let hi = ti, lo = ti;
+      for (let i = ti + 1; i < Math.min(sl.length, ti + 49); i++) {
+        if (sl[i] === null || sl[i] === undefined) continue;
+        if (sl[hi] === null || sl[i] > sl[hi]) hi = i;
+        if (sl[lo] === null || sl[i] < sl[lo]) lo = i;
+      }
+      $("tRows").innerHTML =
+        `<div><span class="k">Highest (next 48h):</span> ${fmt(sl[hi],2)} m ${dayTime(wTimes[hi])}</div>` +
+        `<div><span class="k">Lowest (next 48h):</span> ${fmt(sl[lo],2)} m ${dayTime(wTimes[lo])}</div>`;
+      const s0 = Math.max(0, ti - 24);
+      spark($("tSpark"), sl.slice(s0, ti + 49), wTimes, ti - s0);
+    } else {
+      $("tNow").textContent = "-";
+      $("tRows").innerHTML = `<div>No sea level data for this spot.</div>`;
+      spark($("tSpark"), [], [], 0);
+    }
   } else {
     $("wNow").textContent = "-";
     $("wTrend").innerHTML = "";
     $("wRows").innerHTML = `<div>No marine data for this spot. It may be too far inland - try a point closer to the coast.</div>`;
     spark($("wSpark"), [], [], 0);
     weekBars($("weekBars"), [], []);
+    $("tNow").textContent = "-";
+    $("tRows").innerHTML = `<div>No sea level data for this spot.</div>`;
+    spark($("tSpark"), [], [], 0);
   }
 
   renderMoon();
@@ -452,7 +509,225 @@ $("setBtn").addEventListener("click", () => {
   load({ lat, lon, label: `${lat.toFixed(3)}, ${lon.toFixed(3)}` });
 });
 
+// --- Animated current flow map (windy-style particle streaks) ---
+let flowMap = null, flowMarker = null, flowField = null, flowRAF = 0, flowParticles = [], flowTimer = null, flowVisible = true;
+const FLOW = { cols: 12, rows: 9 };
+const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+function initFlowMap(lat, lon) {
+  flowMap = L.map("flowMap").setView([lat, lon], 9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(flowMap);
+  flowMarker = L.circleMarker([lat, lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#086b82", fillOpacity: 1 }).addTo(flowMap);
+  flowMap.on("movestart zoomstart", () => { stopFlow(); clearFlowCanvas(); });
+  flowMap.on("moveend", () => { clearTimeout(flowTimer); flowTimer = setTimeout(refreshFlow, 500); });
+  window.addEventListener("resize", () => { sizeFlowCanvas(); });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(es => {
+      flowVisible = es[0].isIntersecting;
+      if (flowVisible) startFlow(); else stopFlow();
+    }, { threshold: 0.05 }).observe($("flowWrap"));
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopFlow(); else if (flowVisible) startFlow();
+  });
+  sizeFlowCanvas();
+}
+
+function syncFlowMap(spot) {
+  if (!flowMap) return;
+  flowMarker.setLatLng([spot.lat, spot.lon]);
+  flowMap.panTo([spot.lat, spot.lon]);
+  clearTimeout(flowTimer);
+  flowTimer = setTimeout(refreshFlow, 600);
+}
+
+function sizeFlowCanvas() {
+  const c = $("flowCanvas"), w = $("flowWrap");
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  c.width = Math.max(1, Math.round(w.clientWidth * dpr));
+  c.height = Math.max(1, Math.round(w.clientHeight * dpr));
+  c.style.width = w.clientWidth + "px";
+  c.style.height = w.clientHeight + "px";
+  c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (flowField) spawnParticles();
+}
+
+function clearFlowCanvas() {
+  const c = $("flowCanvas"), ctx = c.getContext("2d");
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.restore();
+}
+
+function refreshFlow() {
+  if (!flowMap) return;
+  const b = flowMap.getBounds();
+  const cols = FLOW.cols, rows = FLOW.rows, lats = [], lons = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    lats.push((b.getSouth() + (r + 0.5) / rows * (b.getNorth() - b.getSouth())).toFixed(3));
+    lons.push((b.getWest() + (c + 0.5) / cols * (b.getEast() - b.getWest())).toFixed(3));
+  }
+  fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + lats.join(",") + "&longitude=" + lons.join(",") +
+        "&hourly=ocean_current_velocity,ocean_current_direction&forecast_days=1&timezone=auto")
+    .then(r => r.json())
+    .then(d => {
+      const arr = Array.isArray(d) ? d : [d];
+      const u = new Float32Array(cols * rows), v = new Float32Array(cols * rows), ok = new Uint8Array(cols * rows);
+      let maxSp = 0;
+      arr.forEach((p, i) => {
+        if (!p.hourly || i >= cols * rows) return;
+        const idx = hourIndex(p.hourly.time);
+        const sp = p.hourly.ocean_current_velocity[idx], dir = p.hourly.ocean_current_direction[idx];
+        if (sp === null || sp === undefined || dir === null || dir === undefined) return;
+        const rad = dir * Math.PI / 180;
+        u[i] = sp * Math.sin(rad); v[i] = sp * Math.cos(rad); ok[i] = 1;
+        if (sp > maxSp) maxSp = sp;
+      });
+      flowField = {
+        u, v, ok, cols, rows, maxSp: maxSp || 1,
+        north: b.getNorth(), south: b.getSouth(), west: b.getWest(), east: b.getEast()
+      };
+      spawnParticles();
+      if (reducedMotion()) drawStaticFlow(); else startFlow();
+    })
+    .catch(() => {});
+}
+
+function sampleFlow(lat, lon) {
+  const f = flowField;
+  if (!f || lat < f.south || lat > f.north || lon < f.west || lon > f.east) return null;
+  const fx = (lon - f.west) / (f.east - f.west) * f.cols - 0.5;
+  const fy = (lat - f.south) / (f.north - f.south) * f.rows - 0.5;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  let su = 0, sv = 0, sw = 0;
+  for (let dy = 0; dy <= 1; dy++) for (let dx = 0; dx <= 1; dx++) {
+    const x = x0 + dx, y = y0 + dy;
+    if (x < 0 || y < 0 || x >= f.cols || y >= f.rows) continue;
+    const i = y * f.cols + x;
+    if (!f.ok[i]) continue;
+    const w = (1 - Math.abs(fx - x)) * (1 - Math.abs(fy - y));
+    if (w <= 0) continue;
+    su += f.u[i] * w; sv += f.v[i] * w; sw += w;
+  }
+  if (!sw) return null;
+  return [su / sw, sv / sw];
+}
+
+function respawn(p) {
+  const f = flowField, b = flowMap.getBounds();
+  const south = Math.max(f.south, b.getSouth()), north = Math.min(f.north, b.getNorth());
+  const west = Math.max(f.west, b.getWest()), east = Math.min(f.east, b.getEast());
+  let lat = 0, lon = 0, s = null;
+  for (let t = 0; t < 10; t++) {
+    lat = south + Math.random() * (north - south);
+    lon = west + Math.random() * (east - west);
+    s = sampleFlow(lat, lon);
+    if (s) break;
+  }
+  const pt = flowMap.latLngToContainerPoint([lat, lon]);
+  p.lat = lat; p.lon = lon; p.px = pt.x; p.py = pt.y;
+  p.age = Math.floor(Math.random() * 60);
+  p.maxAge = 120 + Math.floor(Math.random() * 240);
+}
+
+function spawnParticles() {
+  if (!flowMap || !flowField) return;
+  const c = $("flowCanvas");
+  const area = c.clientWidth * c.clientHeight;
+  const per = window.innerWidth < 640 ? 1200 : 900;
+  const n = Math.max(80, Math.min(650, Math.round(area / per)));
+  flowParticles = Array.from({ length: n }, () => {
+    const p = {};
+    respawn(p);
+    return p;
+  });
+}
+
+function flowFrame() {
+  flowRAF = 0;
+  if (!flowField || !flowMap) return;
+  const c = $("flowCanvas"), ctx = c.getContext("2d");
+  const W = c.clientWidth, H = c.clientHeight;
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillStyle = "rgba(0,0,0,0.055)";
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  const f = flowField;
+  const center = flowMap.getCenter();
+  const cosLat = Math.max(0.2, Math.cos(center.lat * Math.PI / 180));
+  const kmPerPx = 156.54303392 * cosLat / Math.pow(2, flowMap.getZoom());
+  for (const p of flowParticles) {
+    const s = sampleFlow(p.lat, p.lon);
+    p.age++;
+    if (!s || p.age > p.maxAge) { respawn(p); continue; }
+    const sp = Math.hypot(s[0], s[1]);
+    if (sp < 0.02) { if (p.age % 40 === 0) respawn(p); continue; }
+    const step = Math.min(2.4, Math.max(0.2, 0.25 + 1.7 * sp / f.maxSp));
+    const dxPx = (s[0] / sp) * step, dyPx = -(s[1] / sp) * step;
+    p.lat += (-dyPx * kmPerPx) / 111.32;
+    p.lon += (dxPx * kmPerPx) / (111.32 * cosLat);
+    const nx = p.px + dxPx, ny = p.py + dyPx;
+    if (nx < -8 || ny < -8 || nx > W + 8 || ny > H + 8) { respawn(p); continue; }
+    const a = Math.min(0.92, 0.3 + 0.6 * sp / f.maxSp);
+    ctx.strokeStyle = "rgba(8,107,130," + a.toFixed(2) + ")";
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+    p.px = nx; p.py = ny;
+  }
+  flowRAF = requestAnimationFrame(flowFrame);
+}
+
+function startFlow() {
+  if (flowRAF || !flowField || document.hidden || !flowVisible || reducedMotion()) return;
+  flowRAF = requestAnimationFrame(flowFrame);
+}
+
+function stopFlow() {
+  if (flowRAF) { cancelAnimationFrame(flowRAF); flowRAF = 0; }
+}
+
+function drawStaticFlow() {
+  if (!flowField || !flowMap) return;
+  clearFlowCanvas();
+  const c = $("flowCanvas"), ctx = c.getContext("2d");
+  const f = flowField;
+  ctx.strokeStyle = "rgba(8,107,130,0.8)";
+  ctx.fillStyle = "rgba(8,107,130,0.8)";
+  ctx.lineWidth = 1.4;
+  for (let r = 0; r < f.rows; r++) for (let q = 0; q < f.cols; q++) {
+    const i = r * f.cols + q;
+    if (!f.ok[i]) continue;
+    const lat = f.south + (r + 0.5) / f.rows * (f.north - f.south);
+    const lon = f.west + (q + 0.5) / f.cols * (f.east - f.west);
+    const pt = flowMap.latLngToContainerPoint([lat, lon]);
+    const sp = Math.hypot(f.u[i], f.v[i]);
+    const len = Math.min(26, 8 + 10 * sp / f.maxSp);
+    const ang = Math.atan2(f.u[i], f.v[i]); // 0 = north
+    const dx = Math.sin(ang) * len / 2, dy = -Math.cos(ang) * len / 2;
+    ctx.beginPath();
+    ctx.moveTo(pt.x - dx, pt.y - dy);
+    ctx.lineTo(pt.x + dx, pt.y + dy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pt.x + dx, pt.y + dy);
+    ctx.lineTo(pt.x + dx - Math.sin(ang - 0.5) * 6, pt.y + dy + Math.cos(ang - 0.5) * 6);
+    ctx.lineTo(pt.x + dx - Math.sin(ang + 0.5) * 6, pt.y + dy + Math.cos(ang + 0.5) * 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
 initMap(DEFAULT.lat, DEFAULT.lon);
+initFlowMap(DEFAULT.lat, DEFAULT.lon);
+refreshFlow();
 load({ ...DEFAULT });
 $("geoBtn").click();
 </script>
