@@ -70,7 +70,7 @@ h2 { font-size: .78rem; font-weight: 750; letter-spacing: .16em; text-transform:
 .pill.down { background: #e7f4e4; color: #2e6b34; }
 .pill.flat { background: #edf6f7; color: var(--muted); }
 .note { margin-top: 12px; font-size: .82rem; color: var(--muted); }
-.spark { margin-top: 14px; width: 100%; height: 64px; display: block; }
+.spark { margin-top: 14px; width: 100%; height: 80px; display: block; }
 .spark polyline { fill: none; stroke: var(--ocean); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
 .spark .now { fill: var(--ocean); }
 .spark .base { stroke: var(--line); stroke-width: 1; }
@@ -208,6 +208,7 @@ en: {
   weekNote: "Max wave height per day, next 7 days:",
   moonNote: "Computed locally from the date. Full and new moons are the classic high-activity windows.",
   hpaUnit: "hPa (sea level)",
+  cmUnit: "cm", mUnit: "m",
   wind: "Wind:", gusts: "Gusts:", from: "from",
   waveDir: "Wave direction:", swell: "Swell:", current: "Current:",
   noCurrent: "no current data for this spot", toward: "toward",
@@ -258,6 +259,7 @@ he: {
   weekNote: "גובה גל מקסימלי ליום, 7 הימים הבאים:",
   moonNote: "מחושב מקומית מהתאריך. ירח מלא ומולד הם חלונות הפעילות הקלאסיים לדיג.",
   hpaUnit: "hPa (מותאם לגובה פני הים)",
+  cmUnit: "ס״מ", mUnit: "מ׳",
   wind: "רוח:", gusts: "משבים:", from: "מ",
   waveDir: "כיוון גלים:", swell: "סוול:", current: "זרם:",
   noCurrent: "אין נתוני זרם לנקודה זו", toward: "אל",
@@ -354,25 +356,48 @@ function trend(nowV, pastV, unit, thresh, invert, perKey, dec) {
   return `<span class="pill ${cls}">${arrow} ${word} <span dir="ltr">${sign}${fmt(d, dec === undefined ? 1 : dec)} ${unit}</span> ${t(perKey || "per3h")}</span>`;
 }
 
-function spark(svg, values, times, idx) {
+function spark(svg, values, times, idx, opts) {
+  opts = opts || {};
   const vals = values.filter(v => v !== null && v !== undefined);
-  if (!vals.length) { svg.innerHTML = ""; return; }
+  if (!vals.length) { svg.innerHTML = ""; svg._sparkArgs = null; return; }
+  svg._sparkArgs = [values, times, idx, opts];
+  // Draw at the real rendered width so axis text stays crisp (no viewBox stretch).
+  const W = Math.max(160, Math.round(svg.clientWidth) || 300);
+  const H = 80, padL = 36, padR = 6, padT = 16, padB = 14;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.removeAttribute("preserveAspectRatio");
   const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
-  const W = 300, H = 64, pad = 6;
+  const plotW = W - padL - padR, plotH = H - padT - padB;
   const n = values.length;
-  const pts = values.map((v, i) => {
-    if (v === null || v === undefined) return null;
-    const x = pad + (i / (n - 1)) * (W - 2 * pad);
-    const y = H - pad - ((v - min) / span) * (H - 2 * pad);
-    return [x, y];
-  });
+  const xAt = i => padL + (i / (n - 1)) * plotW;
+  const yAt = v => padT + plotH - ((v - min) / span) * plotH;
+  const pts = values.map((v, i) => (v === null || v === undefined) ? null : [xAt(i), yAt(v)]);
   let d = "", started = false;
   pts.forEach(p => { if (!p) { started = false; return; } d += (started ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1) + " "; started = true; });
   const nowP = pts[idx];
-  svg.innerHTML =
-    `<line class="base" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"></line>` +
-    `<path d="${d}" style="fill:none;stroke:var(--ocean);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"></path>` +
-    (nowP ? `<circle class="now" cx="${nowP[0].toFixed(1)}" cy="${nowP[1].toFixed(1)}" r="3.5"></circle>` : "");
+  const dec = opts.dec === undefined ? 0 : opts.dec;
+  let out = "";
+  // y axis: unit caption, gridlines with tick labels (min, mid, max), axis line
+  if (opts.unit) out += `<text x="${padL - 4}" y="10" text-anchor="end" font-size="9" fill="var(--muted)">${opts.unit}</text>`;
+  [min, (min + max) / 2, max].forEach(tv => {
+    const y = yAt(tv);
+    out += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity="0.5"></line>`;
+    out += `<text x="${padL - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--muted)">${fmt(tv, dec)}</text>`;
+  });
+  out += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="var(--line)" stroke-width="1"></line>`;
+  // x axis: baseline + time labels (start, middle, end)
+  out += `<line class="base" x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}"></line>`;
+  if (times && times.length === n && n > 1) {
+    const hh = ts => { const dt = new Date(ts); return String(dt.getHours()).padStart(2, "0") + ":" + String(dt.getMinutes()).padStart(2, "0"); };
+    [[0, "start"], [Math.round((n - 1) / 2), "middle"], [n - 1, "end"]].forEach(pair => {
+      const li = pair[0], anchor = pair[1];
+      if (!times[li]) return;
+      out += `<text x="${xAt(li).toFixed(1)}" y="${H - 3}" text-anchor="${anchor}" font-size="9" fill="var(--muted)">${hh(times[li])}</text>`;
+    });
+  }
+  out += `<path d="${d}" style="fill:none;stroke:var(--ocean);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"></path>`;
+  out += nowP ? `<circle class="now" cx="${nowP[0].toFixed(1)}" cy="${nowP[1].toFixed(1)}" r="3.5"></circle>` : "";
+  svg.innerHTML = out;
 }
 
 function moonInfo(date) {
@@ -475,7 +500,8 @@ async function load(spot) {
   const pNow = pVals[pi], p3 = pVals[Math.max(0, pi - 3)];
   $("pNow").innerHTML = `${fmt(pNow,1)}<small> ${t("hpaUnit")}</small>`;
   $("pTrend").innerHTML = trend(pNow, p3, "hPa", 0.7, false);
-  spark($("pSpark"), pVals.slice(Math.max(0, pi - 23), pi + 1), pTimes, Math.min(23, pi));
+  const ps0 = Math.max(0, pi - 23);
+  spark($("pSpark"), pVals.slice(ps0, pi + 1), pTimes.slice(ps0, pi + 1), pi - ps0, { unit: "hPa", dec: 0 });
   const pDiff = (pNow !== null && p3 !== null) ? pNow - p3 : 0;
   $("pNote").textContent = pDiff < -0.7
     ? t("pFalling")
@@ -520,7 +546,8 @@ async function load(spot) {
         ? `<div><span class="k">${t("current")}</span> ${t("noCurrent")}</div>`
         : `<div><span class="k">${t("current")}</span> <span dir="ltr">${fmt(cur,1)} km/h (${fmt(cur / 1.852,1)} kn)</span> ${t("toward")} ${degToCompass(curDir)} <span dir="ltr">(${Math.round(curDir)}°)</span></div>`) +
       `<div><span class="k">${t("seaTemp")}</span> <span dir="ltr">${fmt(h.sea_surface_temperature[wi],1)} °C</span></div>`;
-    spark($("wSpark"), h.wave_height.slice(Math.max(0, wi - 23), wi + 1), wTimes, Math.min(23, wi));
+    const ws0 = Math.max(0, wi - 23);
+    spark($("wSpark"), h.wave_height.slice(ws0, wi + 1).map(toCm), wTimes.slice(ws0, wi + 1), wi - ws0, { unit: t("cmUnit"), dec: 0 });
     weekBars($("weekBars"), wTimes, h.wave_height.map(toCm));
 
     // Sea level / tide
@@ -539,7 +566,7 @@ async function load(spot) {
         `<div><span class="k">${t("highest")}</span> <span dir="ltr">${fmt(sl[hi],2)} m</span> ${dayTime(wTimes[hi])}</div>` +
         `<div><span class="k">${t("lowest")}</span> <span dir="ltr">${fmt(sl[lo],2)} m</span> ${dayTime(wTimes[lo])}</div>`;
       const s0 = Math.max(0, ti - 24);
-      spark($("tSpark"), sl.slice(s0, ti + 49), wTimes, ti - s0);
+      spark($("tSpark"), sl.slice(s0, ti + 49), wTimes.slice(s0, ti + 49), ti - s0, { unit: t("mUnit"), dec: 2 });
     } else {
       $("tNow").textContent = "-";
       $("tRows").innerHTML = `<div>${t("noSeaLevel")}</div>`;
@@ -987,6 +1014,9 @@ function drawStaticFlow() {
   }
 }
 
+window.addEventListener("resize", () => {
+  document.querySelectorAll("svg.spark").forEach(s => { if (s._sparkArgs) spark(s, ...s._sparkArgs); });
+});
 setLang(LANG, false);
 $("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
 $("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
@@ -998,3 +1028,4 @@ $("geoBtn").click();
 </script>
 </body>
 </html>
+
