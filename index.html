@@ -738,7 +738,11 @@ function refreshFlow() {
       spawnParticles();
       if (reducedMotion()) drawStaticFlow(); else startFlow();
     })
-    .catch(() => {});
+    .catch(() => {
+      // Data fetch failed (e.g. a temporary API rate limit): retry once quietly after a minute.
+      clearTimeout(flowTimer);
+      flowTimer = setTimeout(refreshFlow, 65000);
+    });
 }
 
 function sampleFlow(lat, lon) {
