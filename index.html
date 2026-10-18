@@ -222,6 +222,7 @@ en: {
   highest: "Highest (next 48h):", lowest: "Lowest (next 48h):",
   noSeaLevel: "No sea level data for this spot.",
   noMarine: "No marine data for this spot. It may be too far inland - try a point closer to the coast.",
+  marineBusy: "Marine data is temporarily busy (rate limit). Retrying in about a minute...",
   illumination: "Illumination:", moonAge: "Moon age:", trendK: "Trend:",
   waxing: "Waxing (growing toward full)", waning: "Waning (shrinking toward new)",
   nextFull: "Next full moon:", nextNew: "Next new moon:",
@@ -271,6 +272,7 @@ he: {
   highest: "הכי גבוה (48 השעות הבאות):", lowest: "הכי נמוך (48 השעות הבאות):",
   noSeaLevel: "אין נתוני גובה פני ים לנקודה זו.",
   noMarine: "אין נתוני ים לנקודה זו. ייתכן שהיא רחוקה מדי מהחוף - נסה נקודה קרובה יותר לחוף.",
+  marineBusy: "נתוני הים עמוסים זמנית (מגבלת קצב). מנסה שוב בעוד כדקה...",
   illumination: "תאורה:", moonAge: "גיל הירח:", trendK: "מגמה:",
   waxing: "מתמלא (גדל לקראת מלא)", waning: "מתרוקן (קטן לקראת מולד)",
   nextFull: "הירח המלא הבא:", nextNew: "המולד הבא:",
@@ -307,6 +309,7 @@ function setLang(lang, save) {
 
 const DEFAULT = { lat: 31.95, lon: 34.70 };
 let SPOT = { ...DEFAULT };
+let marineRetry = null;
 
 const WMO_EN = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Light showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, heavy hail"};
 const WMO_HE = {0:"שמים בהירים",1:"בהיר ברובו",2:"מעונן חלקית",3:"מעונן",45:"ערפל",48:"ערפל קפוא",51:"טפטוף קל",53:"טפטוף",55:"טפטוף כבד",56:"טפטוף קפוא",57:"טפטוף קפוא",61:"גשם קל",63:"גשם",65:"גשם כבד",66:"גשם קפוא",67:"גשם קפוא",71:"שלג קל",73:"שלג",75:"שלג כבד",77:"גרגירי שלג",80:"משקעים קלים",81:"משקעים",82:"משקעים כבדים",85:"משקעי שלג",86:"משקעי שלג",95:"סופת רעמים",96:"סופת רעמים עם ברד",99:"סופת רעמים עם ברד כבד"};
@@ -446,15 +449,30 @@ async function load(spot) {
   const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature,ocean_current_velocity,ocean_current_direction,sea_level_height_msl` +
     `&past_days=1&forecast_days=7&timezone=auto`;
-  let fc, mc;
-  try {
-    [fc, mc] = await Promise.all([
-      fetch(fUrl).then(r => { if (!r.ok) throw new Error("weather " + r.status); return r.json(); }),
-      fetch(mUrl).then(r => { if (!r.ok) throw new Error("marine " + r.status); return r.json(); })
-    ]);
-  } catch (e) {
-    showErr(t("errLoad")(e.message));
+  let fc = null, mc = null, fcErr = null, mcErr = null;
+  await Promise.all([
+    fetch(fUrl).then(r => { if (!r.ok) throw new Error("weather " + r.status); return r.json(); }).then(d => { fc = d; }).catch(e => { fcErr = e; }),
+    fetch(mUrl).then(r => { if (!r.ok) throw new Error("marine " + r.status); return r.json(); }).then(d => { mc = d; }).catch(e => { mcErr = e; })
+  ]);
+  if (!fc) {
+    showErr(t("errLoad")((fcErr || mcErr).message));
     renderMoon();
+    return;
+  }
+  clearTimeout(marineRetry); marineRetry = null;
+  if (!mc) {
+    // Marine API temporarily busy (e.g. rate limited): keep weather, pressure and moon
+    // working, say so in the marine cards, and quietly retry in about a minute.
+    $("wNow").textContent = "-";
+    $("wTrend").innerHTML = "";
+    $("wRows").innerHTML = `<div>${t("marineBusy")}</div>`;
+    spark($("wSpark"), [], [], 0);
+    weekBars($("weekBars"), [], []);
+    $("tNow").textContent = "-";
+    $("tRows").innerHTML = `<div>${t("marineBusy")}</div>`;
+    spark($("tSpark"), [], [], 0);
+    renderMoon();
+    marineRetry = setTimeout(() => load({ ...SPOT }), 60000);
     return;
   }
 
@@ -559,10 +577,15 @@ function syncMap(spot) {
   map.panTo([spot.lat, spot.lon]);
 }
 
-let currentLayer = null, currentTimer = null;
+let currentLayer = null, currentTimer = null, curBounds = null, curAt = 0;
 function refreshCurrents() {
   if (!map) return;
   const b = map.getBounds();
+  // Reuse the arrow grid while the view stays inside the last fetch (and it's fresh).
+  if (curBounds && Date.now() - curAt < 600000 &&
+      b.getSouth() >= curBounds.getSouth() && b.getNorth() <= curBounds.getNorth() &&
+      b.getWest() >= curBounds.getWest() && b.getEast() <= curBounds.getEast()) return;
+  curBounds = b; curAt = Date.now();
   const cols = 5, rows = 4, lats = [], lons = [], pts = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
     const la = b.getSouth() + (r + 0.5) / rows * (b.getNorth() - b.getSouth());
@@ -644,8 +667,67 @@ $("setBtn").addEventListener("click", () => {
 
 // --- Animated current flow map (windy-style particle streaks) ---
 let flowMap = null, flowMarker = null, flowField = null, flowRAF = 0, flowParticles = [], flowTimer = null, flowVisible = true;
-const FLOW = { cols: 20, rows: 15 };
+const FLOW = { cols: 16, rows: 12 };
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+// --- Land mask: coastline polygons (Natural Earth countries, ~250KB, fetched once) ---
+let landFeatures = null, landRings = [], landPath = null;
+fetch("https://raw.githubusercontent.com/johan/world.geo.json/master/countries.geo.json")
+  .then(r => r.json())
+  .then(g => {
+    landFeatures = g.features.map(f => {
+      const polys = f.geometry.type === "MultiPolygon" ? f.geometry.coordinates : [f.geometry.coordinates];
+      const rings = [];
+      polys.forEach(pp => pp.forEach(ring => rings.push(ring)));
+      let minX = 180, maxX = -180, minY = 90, maxY = -90;
+      rings.forEach(r => r.forEach(pt => {
+        if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0];
+        if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1];
+      }));
+      return { rings, bbox: [minX, minY, maxX, maxY] };
+    });
+    updateLandRings();
+  })
+  .catch(() => {}); // mask is best-effort; the model land-mask below still applies
+
+function updateLandRings() {
+  landRings = [];
+  landPath = null;
+  if (!landFeatures || !flowMap) return;
+  const b = flowMap.getBounds(), pad = 0.5;
+  landFeatures.forEach(f => {
+    const bb = f.bbox;
+    if (bb[2] < b.getWest() - pad || bb[0] > b.getEast() + pad || bb[3] < b.getSouth() - pad || bb[1] > b.getNorth() + pad) return;
+    f.rings.forEach(r => landRings.push(r));
+  });
+  buildLandPath();
+}
+
+function buildLandPath() {
+  landPath = null;
+  if (!landRings.length || !flowMap) return;
+  const path = new Path2D();
+  landRings.forEach(ring => {
+    ring.forEach((pt, i) => {
+      const pp = flowMap.latLngToContainerPoint([pt[1], pt[0]]);
+      if (i === 0) path.moveTo(pp.x, pp.y); else path.lineTo(pp.x, pp.y);
+    });
+    path.closePath();
+  });
+  landPath = path;
+}
+
+function onLand(lat, lon) {
+  for (const ring of landRings) {
+    let inside = false;
+    for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+      const xi = ring[i][0], yi = ring[i][1], xj = ring[j][0], yj = ring[j][1];
+      if (((yi > lat) !== (yj > lat)) && (lon < (xj - xi) * (lat - yi) / (yj - yi) + xi)) inside = !inside;
+    }
+    if (inside) return true;
+  }
+  return false;
+}
 
 function initFlowMap(lat, lon) {
   flowMap = L.map("flowMap").setView([lat, lon], 9);
@@ -686,6 +768,7 @@ function sizeFlowCanvas() {
   c.style.height = w.clientHeight + "px";
   c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
   if (flowField) spawnParticles();
+  buildLandPath();
 }
 
 function clearFlowCanvas() {
@@ -712,13 +795,28 @@ function fetchGrid(lats, lons) {
   });
 }
 
-function refreshFlow() {
+let flowFieldAt = 0;
+function refreshFlow(force) {
   if (!flowMap) return;
   const b = flowMap.getBounds();
+  // Containment cache: while the view stays inside the fetched field (and it's fresh),
+  // reuse it instead of refiring hundreds of API calls on every small pan or zoom.
+  if (!force && flowField &&
+      b.getSouth() >= flowField.south && b.getNorth() <= flowField.north &&
+      b.getWest() >= flowField.west && b.getEast() <= flowField.east &&
+      Date.now() - flowFieldAt < 600000) {
+    updateLandRings();
+    spawnParticles();
+    if (reducedMotion()) drawStaticFlow(); else startFlow();
+    return;
+  }
+  const padLat = (b.getNorth() - b.getSouth()) * 0.2, padLon = (b.getEast() - b.getWest()) * 0.2;
+  const south = Math.max(-85, b.getSouth() - padLat), north = Math.min(85, b.getNorth() + padLat);
+  const west = Math.max(-180, b.getWest() - padLon), east = Math.min(180, b.getEast() + padLon);
   const cols = FLOW.cols, rows = FLOW.rows, lats = [], lons = [];
   for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    lats.push((b.getSouth() + (r + 0.5) / rows * (b.getNorth() - b.getSouth())).toFixed(3));
-    lons.push((b.getWest() + (c + 0.5) / cols * (b.getEast() - b.getWest())).toFixed(3));
+    lats.push((south + (r + 0.5) / rows * (north - south)).toFixed(3));
+    lons.push((west + (c + 0.5) / cols * (east - west)).toFixed(3));
   }
   fetchGrid(lats, lons)
     .then(arr => {
@@ -733,10 +831,9 @@ function refreshFlow() {
         u[i] = sp * Math.sin(rad); v[i] = sp * Math.cos(rad); ok[i] = 1;
         if (sp > maxSp) maxSp = sp;
       });
-      flowField = {
-        u, v, ok, cols, rows, maxSp: maxSp || 1,
-        north: b.getNorth(), south: b.getSouth(), west: b.getWest(), east: b.getEast()
-      };
+      flowField = { u, v, ok, cols, rows, maxSp: maxSp || 1, north, south, west, east };
+      flowFieldAt = Date.now();
+      updateLandRings();
       spawnParticles();
       if (reducedMotion()) drawStaticFlow(); else startFlow();
     })
@@ -781,7 +878,7 @@ function respawn(p) {
     lat = south + Math.random() * (north - south);
     lon = west + Math.random() * (east - west);
     s = sampleFlow(lat, lon);
-    if (s) break;
+    if (s && !onLand(lat, lon)) break;
   }
   const pt = flowMap.latLngToContainerPoint([lat, lon]);
   p.lat = lat; p.lon = lon; p.px = pt.x; p.py = pt.y;
@@ -837,6 +934,13 @@ function flowFrame() {
     ctx.stroke();
     p.px = nx; p.py = ny;
   }
+  if (landPath) {
+    // Erase any streak pixels over land: the canvas sits above the map,
+    // so destination-out reveals the map tiles underneath.
+    ctx.globalCompositeOperation = "destination-out";
+    ctx.fill(landPath);
+    ctx.globalCompositeOperation = "source-over";
+  }
   flowRAF = requestAnimationFrame(flowFrame);
 }
 
@@ -862,6 +966,7 @@ function drawStaticFlow() {
     if (!f.ok[i]) continue;
     const lat = f.south + (r + 0.5) / f.rows * (f.north - f.south);
     const lon = f.west + (q + 0.5) / f.cols * (f.east - f.west);
+    if (onLand(lat, lon)) continue;
     const pt = flowMap.latLngToContainerPoint([lat, lon]);
     const sp = Math.hypot(f.u[i], f.v[i]);
     const len = Math.min(26, 8 + 10 * sp / f.maxSp);
