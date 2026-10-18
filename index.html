@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MishFish - Fishing Forecast</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<meta name="description" content="Fishing forecast with live weather, barometric pressure trend, wave and swell trends, and moon phase.">
+<style>
+/* Ocean palette, same house style as the portfolio. No libraries, no tracking. */
+:root {
+  color-scheme: light;
+  --ink: #123948;
+  --muted: #506e79;
+  --ocean: #086b82;
+  --line: rgba(50, 110, 127, .17);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { min-height: 100%; scroll-behavior: smooth; }
+body {
+  min-height: 100vh;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: var(--ink);
+  line-height: 1.75;
+  padding: 0 28px;
+  background: #eef7f8;
+  background-image:
+    radial-gradient(ellipse at 85% 5%, rgba(255,255,255,.94), transparent 50%),
+    linear-gradient(165deg, #eef8f8 0%, #e0f0f3 48%, #bedde4 100%);
+}
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='none'%3E%3Cpath d='M0 470C280 320 460 650 760 500S1180 310 1440 460V900H0Z' fill='%2395c8d5' opacity='.15'/%3E%3Cpath d='M0 600C260 460 500 720 820 570S1190 450 1440 570V900H0Z' fill='%236fadc2' opacity='.12'/%3E%3Cpath d='M0 760C300 570 530 850 870 710S1220 650 1440 710V900H0Z' fill='%234786a4' opacity='.10'/%3E%3C/svg%3E") center bottom / cover no-repeat;
+}
+header, main, footer { width: min(100%, 1000px); margin-inline: auto; }
+header { position: relative; padding: 72px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
+header::before { content: ""; display: block; width: 48px; height: 4px; background: var(--ocean); border-radius: 10px; margin-bottom: 26px; }
+h1 { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.08; letter-spacing: -.055em; font-weight: 750; }
+h1 .fish { letter-spacing: 0; }
+.tagline { margin-top: 14px; color: var(--muted); font-size: clamp(1rem, 2vw, 1.15rem); letter-spacing: .015em; }
+.locbar {
+  margin-top: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
+  color: var(--muted); font-size: .92rem;
+}
+.locbar .place { color: var(--ink); font-weight: 600; }
+button {
+  font: inherit; font-size: .88rem; font-weight: 650; cursor: pointer;
+  color: #fff; background: var(--ocean); border: 0; border-radius: 9px; padding: 7px 16px;
+}
+button:hover { background: #00485d; }
+button.ghost { color: var(--ocean); background: #edf6f7; border: 1px solid var(--line); }
+button.ghost:hover { background: #dff0f2; }
+.locbar input {
+  font: inherit; font-size: .88rem; color: var(--ink); width: 96px;
+  border: 1px solid var(--line); border-radius: 9px; padding: 6px 10px; background: rgba(255,255,255,.85);
+}
+main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+section { padding: 28px 30px; border: 1px solid rgba(255,255,255,.85); border-radius: 20px; background: rgba(255,255,255,.78); box-shadow: 0 10px 38px rgba(21,77,95,.045); }
+h2 { font-size: .78rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; color: var(--ocean); margin-bottom: 16px; }
+.big { font-size: 2.1rem; font-weight: 720; letter-spacing: -.02em; line-height: 1.15; }
+.big small { font-size: 1rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
+.rows { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; font-size: .95rem; }
+.rows .k { color: var(--muted); }
+.pill { display: inline-block; border-radius: 999px; padding: 3px 13px; font-size: .82rem; font-weight: 700; margin-top: 10px; }
+.pill.up { background: #fdeaea; color: #a33327; }
+.pill.down { background: #e7f4e4; color: #2e6b34; }
+.pill.flat { background: #edf6f7; color: var(--muted); }
+.note { margin-top: 12px; font-size: .82rem; color: var(--muted); }
+.spark { margin-top: 14px; width: 100%; height: 64px; display: block; }
+.spark polyline { fill: none; stroke: var(--ocean); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.spark .now { fill: var(--ocean); }
+.spark .base { stroke: var(--line); stroke-width: 1; }
+.moonface { font-size: 2.4rem; line-height: 1; }
+.err { grid-column: 1 / -1; color: #a33327; font-size: .92rem; display: none; }
+a { color: var(--ocean); text-decoration-color: rgba(8,107,130,.32); text-underline-offset: 4px; }
+a:hover { color: #00485d; text-decoration-color: currentColor; }
+footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-size: .77rem; }
+#map { height: 320px; border-radius: 12px; border: 1px solid var(--line); }
+#mapSec { grid-column: 1 / -1; }
+.hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
+.hits button { text-align: left; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
+.hits button:hover { background: #dff0f2; }
+.leaflet-container { font: inherit; }
+.cur-arrow { background: transparent; border: none; }
+.cur-arrow span { color: var(--ocean); text-shadow: 0 0 4px #fff, 0 0 2px #fff; }
+@media (max-width: 640px) {
+  body { padding-inline: 20px; }
+  header { padding: 52px 0 30px; margin-bottom: 22px; }
+  main { grid-template-columns: 1fr; gap: 16px; }
+  section { padding: 22px; border-radius: 16px; }
+  .big { font-size: 1.8rem; }
+}
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>MishFish <span class="fish">🎣</span></h1>
+  <p class="tagline">Fishing forecast: weather, pressure, waves and moon.</p>
+  <div class="locbar">
+    <span>Spot: <span class="place" id="place">locating...</span></span>
+    <button id="geoBtn" type="button">Use my location</button>
+    <input id="latIn" type="number" step="any" min="-90" max="90" placeholder="lat" aria-label="latitude">
+    <input id="lonIn" type="number" step="any" min="-180" max="180" placeholder="lon" aria-label="longitude">
+    <button id="setBtn" type="button" class="ghost">Set spot</button>
+    <input id="addrIn" type="text" placeholder="Search a place or address" aria-label="search a place or address" style="flex:1; min-width:170px;">
+    <button id="searchBtn" type="button" class="ghost">Search</button>
+    <div class="hits" id="hits"></div>
+  </div>
+  <div class="err" id="errBox"></div>
+</header>
+
+<main>
+  <section id="mapSec">
+    <h2>Pick a spot</h2>
+    <div id="map"></div>
+    <p class="note">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
+  </section>
+
+  <section id="now">
+    <h2>Right now</h2>
+    <div class="big" id="nowTemp">-</div>
+    <div class="rows" id="nowRows"></div>
+  </section>
+
+  <section id="pressure">
+    <h2>Pressure</h2>
+    <div class="big" id="pNow">-</div>
+    <div id="pTrend"></div>
+    <svg class="spark" id="pSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <p class="note" id="pNote"></p>
+  </section>
+
+  <section id="waves">
+    <h2>Waves &amp; swell</h2>
+    <div class="big" id="wNow">-</div>
+    <div id="wTrend"></div>
+    <div class="rows" id="wRows"></div>
+    <svg class="spark" id="wSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
+    <p class="note" style="margin-bottom:4px;">Max wave height per day, next 7 days:</p>
+    <svg class="spark" id="weekBars" viewBox="0 0 300 90" style="height:90px;" aria-hidden="true"></svg>
+  </section>
+
+  <section id="moon">
+    <h2>Moon</h2>
+    <div class="moonface" id="mEmoji">🌙</div>
+    <div class="big" id="mPhase" style="font-size:1.5rem; margin-top:6px;">-</div>
+    <div class="rows" id="mRows"></div>
+    <p class="note">Computed locally from the date. Full and new moons are the classic high-activity windows.</p>
+  </section>
+</main>
+
+<footer>
+  Weather &amp; marine data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Moon phase computed on your device. Map &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors, built with <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. No accounts, no keys, no tracking.
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const DEFAULT = { lat: 31.95, lon: 34.70, label: "Rishon LeTsiyyon beach (default)" };
+let SPOT = { ...DEFAULT };
+
+const WMO = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Light showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, heavy hail"};
+
+const $ = id => document.getElementById(id);
+const fmt = (v, d=1) => (v === null || v === undefined || isNaN(v)) ? "-" : (+v).toFixed(d);
+const degToCompass = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
+const kmhToKn = k => k * 0.539957;
+
+function hourIndex(times) {
+  const now = Date.now();
+  let best = 0, bestDiff = Infinity;
+  times.forEach((t, i) => {
+    const diff = Math.abs(new Date(t).getTime() - now);
+    if (diff < bestDiff) { bestDiff = diff; best = i; }
+  });
+  return best;
+}
+
+function trend(nowV, pastV, unit, thresh, invert) {
+  if (nowV === null || pastV === null || nowV === undefined || pastV === undefined) return "";
+  const d = nowV - pastV;
+  let cls = "flat", arrow = "→", word = "Steady";
+  if (d > thresh) { cls = invert ? "down" : "up"; arrow = "↑"; word = "Rising"; }
+  else if (d < -thresh) { cls = invert ? "up" : "down"; arrow = "↓"; word = "Falling"; }
+  const sign = d > 0 ? "+" : "";
+  return `<span class="pill ${cls}">${arrow} ${word} ${sign}${fmt(d,1)} ${unit} / 3h</span>`;
+}
+
+function spark(svg, values, times, idx) {
+  const vals = values.filter(v => v !== null && v !== undefined);
+  if (!vals.length) { svg.innerHTML = ""; return; }
+  const min = Math.min(...vals), max = Math.max(...vals), span = (max - min) || 1;
+  const W = 300, H = 64, pad = 6;
+  const n = values.length;
+  const pts = values.map((v, i) => {
+    if (v === null || v === undefined) return null;
+    const x = pad + (i / (n - 1)) * (W - 2 * pad);
+    const y = H - pad - ((v - min) / span) * (H - 2 * pad);
+    return [x, y];
+  });
+  let d = "", started = false;
+  pts.forEach(p => { if (!p) { started = false; return; } d += (started ? "L" : "M") + p[0].toFixed(1) + " " + p[1].toFixed(1) + " "; started = true; });
+  const nowP = pts[idx];
+  svg.innerHTML =
+    `<line class="base" x1="${pad}" y1="${H-pad}" x2="${W-pad}" y2="${H-pad}"></line>` +
+    `<path d="${d}" style="fill:none;stroke:var(--ocean);stroke-width:2;stroke-linejoin:round;stroke-linecap:round"></path>` +
+    (nowP ? `<circle class="now" cx="${nowP[0].toFixed(1)}" cy="${nowP[1].toFixed(1)}" r="3.5"></circle>` : "");
+}
+
+function moonInfo(date) {
+  const synodic = 29.53058867;
+  const known = Date.UTC(2000, 0, 6, 18, 14); // known new moon
+  const age = (((date.getTime() - known) / 86400000) % synodic + synodic) % synodic;
+  const illum = (1 - Math.cos(2 * Math.PI * age / synodic)) / 2;
+  const phases = [
+    [1.84566, "New moon", "🌑"], [5.53699, "Waxing crescent", "🌒"], [9.22831, "First quarter", "🌓"],
+    [12.91963, "Waxing gibbous", "🌔"], [16.61096, "Full moon", "🌕"], [20.30228, "Waning gibbous", "🌖"],
+    [23.99361, "Last quarter", "🌗"], [27.68493, "Waning crescent", "🌘"], [synodic + 1, "New moon", "🌑"]
+  ];
+  const [, name, emoji] = phases.find(p => age < p[0]);
+  const waxing = age < synodic / 2;
+  const toFull = ((synodic / 2) - age + synodic) % synodic;
+  const toNew = (synodic - age) % synodic;
+  return { age, illum, name, emoji, waxing, toFull, toNew };
+}
+
+function weekBars(svg, times, values) {
+  const days = {}, order = [];
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  times.forEach((t, i) => {
+    const d = new Date(t);
+    if (d < today) return;
+    const key = t.slice(0, 10);
+    if (!(key in days)) { days[key] = -Infinity; order.push(key); }
+    const v = values[i];
+    if (v !== null && v !== undefined && v > days[key]) days[key] = v;
+  });
+  const keys = order.slice(0, 7);
+  if (!keys.length) { svg.innerHTML = ""; return; }
+  const max = Math.max(...keys.map(k => days[k] > 0 ? days[k] : 0), 0.1);
+  const W = 300, H = 90, pad = 4, labelH = 14, valH = 12;
+  const bw = (W - pad * 2) / keys.length;
+  let out = "";
+  keys.forEach((k, i) => {
+    const v = days[k] > 0 ? days[k] : 0;
+    const bh = (v / max) * (H - labelH - valH - pad);
+    const x = pad + i * bw + 3, y = H - labelH - bh;
+    const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(k + "T12:00").getDay()];
+    out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="var(--ocean)" opacity="${i === 0 ? 0.95 : 0.55}"></rect>`;
+    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--muted)">${v.toFixed(1)}</text>`;
+    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--muted)">${wd}</text>`;
+  });
+  svg.innerHTML = out;
+}
+
+function renderMoon() {
+  const m = moonInfo(new Date());
+  $("mEmoji").textContent = m.emoji;
+  $("mPhase").textContent = m.name;
+  $("mRows").innerHTML =
+    `<div><span class="k">Illumination:</span> ${Math.round(m.illum * 100)}%</div>` +
+    `<div><span class="k">Moon age:</span> ${fmt(m.age,1)} days</div>` +
+    `<div><span class="k">Trend:</span> ${m.waxing ? "Waxing (growing toward full)" : "Waning (shrinking toward new)"}</div>` +
+    `<div><span class="k">Next full moon:</span> in ${Math.ceil(m.toFull)} day${Math.ceil(m.toFull) === 1 ? "" : "s"}</div>` +
+    `<div><span class="k">Next new moon:</span> in ${Math.ceil(m.toNew)} day${Math.ceil(m.toNew) === 1 ? "" : "s"}</div>`;
+}
+
+function showErr(msg) { const e = $("errBox"); e.textContent = msg; e.style.display = msg ? "block" : "none"; }
+
+async function load(spot) {
+  showErr("");
+  $("place").textContent = spot.label;
+  $("latIn").value = spot.lat.toFixed(4);
+  $("lonIn").value = spot.lon.toFixed(4);
+  syncMap(spot);
+  const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
+    `&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m` +
+    `&hourly=pressure_msl&past_days=1&forecast_days=2&timezone=auto&wind_speed_unit=kmh`;
+  const mUrl = `https://marine-api.open-meteo.com/v1/marine?latitude=${spot.lat}&longitude=${spot.lon}` +
+    `&hourly=wave_height,wave_period,wave_direction,swell_wave_height,swell_wave_period,swell_wave_direction,sea_surface_temperature,ocean_current_velocity,ocean_current_direction` +
+    `&past_days=1&forecast_days=7&timezone=auto`;
+  let fc, mc;
+  try {
+    [fc, mc] = await Promise.all([
+      fetch(fUrl).then(r => { if (!r.ok) throw new Error("weather " + r.status); return r.json(); }),
+      fetch(mUrl).then(r => { if (!r.ok) throw new Error("marine " + r.status); return r.json(); })
+    ]);
+  } catch (e) {
+    showErr("Could not load forecast data (" + e.message + "). Check your connection and try again.");
+    return;
+  }
+
+  // Right now
+  const c = fc.current;
+  $("nowTemp").innerHTML = `${fmt(c.temperature_2m,1)}<small> °C · ${WMO[c.weather_code] || "Weather code " + c.weather_code}</small>`;
+  $("nowRows").innerHTML =
+    `<div><span class="k">Wind:</span> ${fmt(c.wind_speed_10m,0)} km/h (${fmt(kmhToKn(c.wind_speed_10m),0)} kn) from ${degToCompass(c.wind_direction_10m)} (${Math.round(c.wind_direction_10m)}°)</div>` +
+    `<div><span class="k">Gusts:</span> ${fmt(c.wind_gusts_10m,0)} km/h</div>`;
+
+  // Pressure
+  const pTimes = fc.hourly.time, pVals = fc.hourly.pressure_msl;
+  const pi = hourIndex(pTimes);
+  const pNow = pVals[pi], p3 = pVals[Math.max(0, pi - 3)];
+  $("pNow").innerHTML = `${fmt(pNow,1)}<small> hPa (sea level)</small>`;
+  $("pTrend").innerHTML = trend(pNow, p3, "hPa", 0.7, false);
+  spark($("pSpark"), pVals.slice(Math.max(0, pi - 23), pi + 1), pTimes, Math.min(23, pi));
+  const pDiff = (pNow !== null && p3 !== null) ? pNow - p3 : 0;
+  $("pNote").textContent = pDiff < -0.7
+    ? "Falling pressure often turns fish on. Good window."
+    : pDiff > 0.7
+    ? "Rising pressure can slow the bite right after a front, then settle into decent fishing."
+    : "Stable pressure, fish keep their usual pattern.";
+
+  // Waves
+  const wVals = mc.hourly.wave_height;
+  const hasMarine = wVals && wVals.some(v => v !== null);
+  if (hasMarine) {
+    const wTimes = mc.hourly.time;
+    const wi = hourIndex(wTimes);
+    const h = mc.hourly;
+    const wNow = h.wave_height[wi], w3 = h.wave_height[Math.max(0, wi - 3)];
+    $("wNow").innerHTML = `${fmt(wNow,2)}<small> m waves · ${fmt(h.wave_period[wi],0)} s period</small>`;
+    const cur = h.ocean_current_velocity ? h.ocean_current_velocity[wi] : null;
+    const cur3 = h.ocean_current_velocity ? h.ocean_current_velocity[Math.max(0, wi - 3)] : null;
+    const curDir = h.ocean_current_direction ? h.ocean_current_direction[wi] : null;
+    $("wTrend").innerHTML = trend(wNow, w3, "m", 0.1, false) + " " +
+      (cur === null || cur === undefined ? "" : trend(cur, cur3, "km/h", 0.1, false).replace("/ 3h", "current / 3h"));
+    $("wRows").innerHTML =
+      `<div><span class="k">Wave direction:</span> ${degToCompass(h.wave_direction[wi])} (${Math.round(h.wave_direction[wi])}°)</div>` +
+      `<div><span class="k">Swell:</span> ${fmt(h.swell_wave_height[wi],2)} m · ${fmt(h.swell_wave_period[wi],0)} s from ${degToCompass(h.swell_wave_direction[wi])}</div>` +
+      (cur === null || cur === undefined
+        ? `<div><span class="k">Current:</span> no current data for this spot</div>`
+        : `<div><span class="k">Current:</span> ${fmt(cur,1)} km/h (${fmt(cur / 1.852,1)} kn) toward ${degToCompass(curDir)} (${Math.round(curDir)}°)</div>`) +
+      `<div><span class="k">Sea temperature:</span> ${fmt(h.sea_surface_temperature[wi],1)} °C</div>`;
+    spark($("wSpark"), h.wave_height.slice(Math.max(0, wi - 23), wi + 1), wTimes, Math.min(23, wi));
+    weekBars($("weekBars"), wTimes, h.wave_height);
+  } else {
+    $("wNow").textContent = "-";
+    $("wTrend").innerHTML = "";
+    $("wRows").innerHTML = `<div>No marine data for this spot. It may be too far inland - try a point closer to the coast.</div>`;
+    spark($("wSpark"), [], [], 0);
+    weekBars($("weekBars"), [], []);
+  }
+
+  renderMoon();
+  refreshCurrents();
+}
+
+let map = null, marker = null;
+function initMap(lat, lon) {
+  map = L.map("map").setView([lat, lon], 9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(map);
+  marker = L.marker([lat, lon]).addTo(map);
+  map.on("click", e => {
+    load({ lat: e.latlng.lat, lon: e.latlng.lng, label: e.latlng.lat.toFixed(3) + ", " + e.latlng.lng.toFixed(3) });
+  });
+  map.on("moveend", () => { clearTimeout(currentTimer); currentTimer = setTimeout(refreshCurrents, 700); });
+}
+function syncMap(spot) {
+  if (!map) return;
+  marker.setLatLng([spot.lat, spot.lon]);
+  map.panTo([spot.lat, spot.lon]);
+}
+
+let currentLayer = null, currentTimer = null;
+function refreshCurrents() {
+  if (!map) return;
+  const b = map.getBounds();
+  const cols = 5, rows = 4, lats = [], lons = [], pts = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    const la = b.getSouth() + (r + 0.5) / rows * (b.getNorth() - b.getSouth());
+    const lo = b.getWest() + (c + 0.5) / cols * (b.getEast() - b.getWest());
+    lats.push(la.toFixed(3)); lons.push(lo.toFixed(3)); pts.push([la, lo]);
+  }
+  fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + lats.join(",") + "&longitude=" + lons.join(",") +
+        "&hourly=ocean_current_velocity,ocean_current_direction&forecast_days=1&timezone=auto")
+    .then(r => r.json()).then(d => {
+      const arr = Array.isArray(d) ? d : [d];
+      if (currentLayer) currentLayer.remove();
+      currentLayer = L.layerGroup();
+      arr.forEach((p, i) => {
+        if (!p.hourly) return;
+        const idx = hourIndex(p.hourly.time);
+        const v = p.hourly.ocean_current_velocity[idx], dir = p.hourly.ocean_current_direction[idx];
+        if (v === null || v === undefined || dir === null || dir === undefined) return;
+        const size = Math.min(30, 14 + v * 6);
+        const op = Math.min(0.95, 0.4 + v * 0.25);
+        const icon = L.divIcon({
+          className: "cur-arrow",
+          html: `<span style="display:inline-block;transform:rotate(${dir - 90}deg);font-size:${size}px;opacity:${op}">➤</span>`,
+          iconSize: [size, size], iconAnchor: [size / 2, size / 2]
+        });
+        currentLayer.addLayer(L.marker(pts[i], { icon, interactive: false, keyboard: false }));
+      });
+      currentLayer.addTo(map);
+    }).catch(() => {});
+}
+
+async function doSearch() {
+  const q = $("addrIn").value.trim();
+  if (!q) return;
+  const hits = $("hits");
+  hits.innerHTML = "";
+  try {
+    const r = await fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=5&language=en&format=json");
+    const d = await r.json();
+    if (!d.results || !d.results.length) { showErr("No place found for '" + q + "'."); return; }
+    showErr("");
+    d.results.forEach(p => {
+      const b = document.createElement("button");
+      b.type = "button";
+      b.textContent = [p.name, p.admin1, p.country].filter(Boolean).join(", ");
+      b.addEventListener("click", () => {
+        hits.innerHTML = "";
+        $("addrIn").value = "";
+        load({ lat: p.latitude, lon: p.longitude, label: b.textContent });
+      });
+      hits.appendChild(b);
+    });
+  } catch (e) {
+    showErr("Place search failed (" + e.message + ").");
+  }
+}
+$("searchBtn").addEventListener("click", doSearch);
+$("addrIn").addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
+
+$("geoBtn").addEventListener("click", () => {
+  if (!navigator.geolocation) { showErr("Geolocation is not supported by this browser."); return; }
+  navigator.geolocation.getCurrentPosition(
+    pos => load({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: "your location" }),
+    err => {
+      load({ ...DEFAULT });
+      showErr("Location unavailable (" + err.message + "). Showing the default spot - enter coordinates to pick another.");
+    },
+    { timeout: 10000, maximumAge: 300000 }
+  );
+});
+
+$("setBtn").addEventListener("click", () => {
+  const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
+  if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+    showErr("Enter a valid latitude (-90..90) and longitude (-180..180).");
+    return;
+  }
+  load({ lat, lon, label: `${lat.toFixed(3)}, ${lon.toFixed(3)}` });
+});
+
+initMap(DEFAULT.lat, DEFAULT.lon);
+load({ ...DEFAULT });
+$("geoBtn").click();
+</script>
+</body>
+</html>
