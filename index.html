@@ -86,11 +86,15 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 #flowMap { height: 380px; border-radius: 12px; border: 1px solid var(--line); }
 #flowCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 12px; }
 .hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
-.hits button { text-align: left; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
+.hits button { text-align: start; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
 .hits button:hover { background: #dff0f2; }
 .leaflet-container { font: inherit; }
 .cur-arrow { background: transparent; border: none; }
 .cur-arrow span { color: var(--ocean); text-shadow: 0 0 4px #fff, 0 0 2px #fff; }
+.langbar { position: absolute; top: 24px; inset-inline-end: 0; display: flex; gap: 6px; }
+.langbar button { font-size: .78rem; padding: 4px 12px; border-radius: 8px; }
+#map, #flowWrap { direction: ltr; }
+html[dir="rtl"] h2 { letter-spacing: .05em; }
 @media (max-width: 640px) {
   body { padding-inline: 20px; }
   header { padding: 52px 0 30px; margin-bottom: 22px; }
@@ -103,16 +107,20 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 </head>
 <body>
 <header>
+  <div class="langbar">
+    <button id="langEn" type="button">EN</button>
+    <button id="langHe" type="button" class="ghost">עב</button>
+  </div>
   <h1>MishFish <span class="fish">🎣</span></h1>
-  <p class="tagline">Fishing forecast: weather, pressure, waves and moon.</p>
+  <p class="tagline" data-i18n="tagline">Fishing forecast: weather, pressure, waves and moon.</p>
   <div class="locbar">
-    <span>Spot: <span class="place" id="place">locating...</span></span>
-    <button id="geoBtn" type="button">Use my location</button>
-    <input id="latIn" type="number" step="any" min="-90" max="90" placeholder="lat" aria-label="latitude">
-    <input id="lonIn" type="number" step="any" min="-180" max="180" placeholder="lon" aria-label="longitude">
-    <button id="setBtn" type="button" class="ghost">Set spot</button>
-    <input id="addrIn" type="text" placeholder="Search a place or address" aria-label="search a place or address" style="flex:1; min-width:170px;">
-    <button id="searchBtn" type="button" class="ghost">Search</button>
+    <span><span data-i18n="spotLabel">Spot:</span> <span class="place" id="place">locating...</span></span>
+    <button id="geoBtn" type="button" data-i18n="useMyLocation">Use my location</button>
+    <input id="latIn" type="number" step="any" min="-90" max="90" placeholder="lat" aria-label="latitude" data-i18n-aria="latAria">
+    <input id="lonIn" type="number" step="any" min="-180" max="180" placeholder="lon" aria-label="longitude" data-i18n-aria="lonAria">
+    <button id="setBtn" type="button" class="ghost" data-i18n="setSpot">Set spot</button>
+    <input id="addrIn" type="text" placeholder="Search a place or address" aria-label="search a place or address" style="flex:1; min-width:170px;" data-i18n-ph="searchPh" data-i18n-aria="searchAria">
+    <button id="searchBtn" type="button" class="ghost" data-i18n="search">Search</button>
     <div class="hits" id="hits"></div>
   </div>
   <div class="err" id="errBox"></div>
@@ -120,28 +128,28 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 
 <main>
   <section id="mapSec">
-    <h2>Pick a spot</h2>
+    <h2 data-i18n="pickSpot">Pick a spot</h2>
     <div id="map"></div>
-    <p class="note">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
+    <p class="note" data-i18n="pickNote">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
   </section>
 
   <section id="flowSec">
-    <h2>Sea currents - live flow</h2>
+    <h2 data-i18n="flowTitle">Sea currents - live flow</h2>
     <div id="flowWrap">
       <div id="flowMap"></div>
       <canvas id="flowCanvas"></canvas>
     </div>
-    <p class="note">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
+    <p class="note" data-i18n="flowNote">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
   </section>
 
   <section id="now">
-    <h2>Right now</h2>
+    <h2 data-i18n="nowTitle">Right now</h2>
     <div class="big" id="nowTemp">-</div>
     <div class="rows" id="nowRows"></div>
   </section>
 
   <section id="pressure">
-    <h2>Pressure</h2>
+    <h2 data-i18n="pressureTitle">Pressure</h2>
     <div class="big" id="pNow">-</div>
     <div id="pTrend"></div>
     <svg class="spark" id="pSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
@@ -149,54 +157,176 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
   </section>
 
   <section id="waves">
-    <h2>Waves &amp; swell</h2>
+    <h2 data-i18n="wavesTitle">Waves &amp; swell</h2>
     <div class="big" id="wNow">-</div>
     <div id="wTrend"></div>
     <div class="rows" id="wRows"></div>
     <svg class="spark" id="wSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <p class="note" style="margin-bottom:4px;">Max wave height per day, next 7 days:</p>
+    <p class="note" style="margin-bottom:4px;" data-i18n="weekNote">Max wave height per day, next 7 days:</p>
     <svg class="spark" id="weekBars" viewBox="0 0 300 90" style="height:90px;" aria-hidden="true"></svg>
   </section>
 
   <section id="tide">
-    <h2>Sea level &amp; tide</h2>
+    <h2 data-i18n="tideTitle">Sea level &amp; tide</h2>
     <div class="big" id="tNow">-</div>
     <div class="rows" id="tRows"></div>
     <svg class="spark" id="tSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
-    <p class="note">The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.</p>
+    <p class="note" data-i18n="tideNote">The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.</p>
   </section>
 
   <section id="moon">
-    <h2>Moon</h2>
+    <h2 data-i18n="moonTitle">Moon</h2>
     <div class="moonface" id="mEmoji">🌙</div>
     <div class="big" id="mPhase" style="font-size:1.5rem; margin-top:6px;">-</div>
     <div class="rows" id="mRows"></div>
-    <p class="note">Computed locally from the date. Full and new moons are the classic high-activity windows.</p>
+    <p class="note" data-i18n="moonNote">Computed locally from the date. Full and new moons are the classic high-activity windows.</p>
   </section>
 </main>
 
-<footer>
+<footer data-i18n="footer">
   Weather &amp; marine data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Moon phase computed on your device. Map &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors, built with <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. No accounts, no keys, no tracking.
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-const DEFAULT = { lat: 31.95, lon: 34.70, label: "Rishon LeTsiyyon beach (default)" };
+// --- Language (English / Hebrew) ---
+let LANG = localStorage.getItem("mishfish-lang") || (((navigator.language || "").slice(0, 2) === "he") ? "he" : "en");
+const I18N = {
+en: {
+  title: "MishFish - Fishing Forecast",
+  tagline: "Fishing forecast: weather, pressure, waves and moon.",
+  spotLabel: "Spot:", locating: "locating...", yourLocation: "your location",
+  useMyLocation: "Use my location", setSpot: "Set spot", search: "Search",
+  searchPh: "Search a place or address", latAria: "latitude", lonAria: "longitude", searchAria: "search a place or address",
+  pickSpot: "Pick a spot",
+  pickNote: "Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).",
+  flowTitle: "Sea currents - live flow",
+  flowNote: "Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.",
+  nowTitle: "Right now", pressureTitle: "Pressure", wavesTitle: "Waves & swell",
+  tideTitle: "Sea level & tide", moonTitle: "Moon",
+  tideNote: "The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.",
+  weekNote: "Max wave height per day, next 7 days:",
+  moonNote: "Computed locally from the date. Full and new moons are the classic high-activity windows.",
+  hpaUnit: "hPa (sea level)",
+  wind: "Wind:", gusts: "Gusts:", from: "from",
+  waveDir: "Wave direction:", swell: "Swell:", current: "Current:",
+  noCurrent: "no current data for this spot", toward: "toward",
+  seaTemp: "Sea temperature:",
+  wavesSmall: p => "m waves · " + p + " s period",
+  rising: "Rising", falling: "Falling", steady: "Steady",
+  per3h: "/ 3h", currentPer3h: "current / 3h",
+  today: "today", tomorrow: "tomorrow",
+  days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
+  daysUnit: "days",
+  vsMsl: "m vs mean sea level",
+  highest: "Highest (next 48h):", lowest: "Lowest (next 48h):",
+  noSeaLevel: "No sea level data for this spot.",
+  noMarine: "No marine data for this spot. It may be too far inland - try a point closer to the coast.",
+  illumination: "Illumination:", moonAge: "Moon age:", trendK: "Trend:",
+  waxing: "Waxing (growing toward full)", waning: "Waning (shrinking toward new)",
+  nextFull: "Next full moon:", nextNew: "Next new moon:",
+  inDays: n => "in " + n + " day" + (n === 1 ? "" : "s"),
+  weatherCode: c => "Weather code " + c,
+  phNew: "New moon", phWaxC: "Waxing crescent", phFQ: "First quarter", phWaxG: "Waxing gibbous",
+  phFull: "Full moon", phWanG: "Waning gibbous", phLQ: "Last quarter", phWanC: "Waning crescent",
+  pFalling: "Falling pressure often turns fish on. Good window.",
+  pRising: "Rising pressure can slow the bite right after a front, then settle into decent fishing.",
+  pStable: "Stable pressure, fish keep their usual pattern.",
+  errLoad: m => "Could not load forecast data (" + m + "). Check your connection and try again.",
+  errNoPlace: q => "No place found for '" + q + "'.",
+  errSearch: m => "Place search failed (" + m + ").",
+  errGeo: "Geolocation is not supported by this browser.",
+  errGeoDenied: m => "Location unavailable (" + m + "). Showing the default spot - enter coordinates to pick another.",
+  errLatLon: "Enter a valid latitude (-90..90) and longitude (-180..180).",
+  defaultSpot: "Rishon LeTsiyyon beach (default)",
+  footer: 'Weather &amp; marine data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Moon phase computed on your device. Map &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors, built with <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. No accounts, no keys, no tracking.'
+},
+he: {
+  title: "MishFish - תחזית דיג",
+  tagline: "תחזית דיג: מזג אוויר, לחץ, גלים וירח.",
+  spotLabel: "נקודה:", locating: "מאתר מיקום...", yourLocation: "המיקום שלך",
+  useMyLocation: "השתמש במיקום שלי", setSpot: "קבע נקודה", search: "חיפוש",
+  searchPh: "חפש מקום או כתובת", latAria: "קו רוחב", lonAria: "קו אורך", searchAria: "חפש מקום או כתובת",
+  pickSpot: "בחר נקודה",
+  pickNote: "הקש או לחץ על מקום כלשהו במפה כדי לקבוע את נקודת הדיג. החצים מראים את כיוון ומהירות זרם הים (נתוני מודל גסים, פחות אמינים ממש ליד החוף).",
+  flowTitle: "זרמי ים - זרימה חיה",
+  flowNote: "הפסים נסחפים עם זרם המודל: כיוון ומהירות יחסית. נתוני מודל גסים, להערכה בלבד ופחות אמינים ממש ליד החוף.",
+  nowTitle: "עכשיו", pressureTitle: "לחץ אוויר", wavesTitle: "גלים וסוול",
+  tideTitle: "גובה פני הים וגאות", moonTitle: "ירח",
+  tideNote: "לים התיכון כמעט אין גאות: התנודה היומית כאן בדרך כלל פחות מ-30 ס״מ, ורוב מה שרואים הוא סחף איטי של גובה פני הים, לא גאות בסגנון האוקיינוס. לדיג, הרוח והזרמים חשובים יותר.",
+  weekNote: "גובה גל מקסימלי ליום, 7 הימים הבאים:",
+  moonNote: "מחושב מקומית מהתאריך. ירח מלא ומולד הם חלונות הפעילות הקלאסיים לדיג.",
+  hpaUnit: "hPa (מותאם לגובה פני הים)",
+  wind: "רוח:", gusts: "משבים:", from: "מ",
+  waveDir: "כיוון גלים:", swell: "סוול:", current: "זרם:",
+  noCurrent: "אין נתוני זרם לנקודה זו", toward: "אל",
+  seaTemp: "טמפרטורת הים:",
+  wavesSmall: p => "מ׳ גלים · מחזור " + p + " שנ׳",
+  rising: "עולה", falling: "יורד", steady: "יציב",
+  per3h: "ב-3 שעות", currentPer3h: "זרם ב-3 שעות",
+  today: "היום", tomorrow: "מחר",
+  days: ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"],
+  daysUnit: "ימים",
+  vsMsl: "מ׳ ביחס לגובה פני הים",
+  highest: "הכי גבוה (48 השעות הבאות):", lowest: "הכי נמוך (48 השעות הבאות):",
+  noSeaLevel: "אין נתוני גובה פני ים לנקודה זו.",
+  noMarine: "אין נתוני ים לנקודה זו. ייתכן שהיא רחוקה מדי מהחוף - נסה נקודה קרובה יותר לחוף.",
+  illumination: "תאורה:", moonAge: "גיל הירח:", trendK: "מגמה:",
+  waxing: "מתמלא (גדל לקראת מלא)", waning: "מתרוקן (קטן לקראת מולד)",
+  nextFull: "הירח המלא הבא:", nextNew: "המולד הבא:",
+  inDays: n => n === 1 ? "בעוד יום" : n === 2 ? "בעוד יומיים" : "בעוד " + n + " ימים",
+  weatherCode: c => "קוד מזג אוויר " + c,
+  phNew: "מולד", phWaxC: "סהר מתמלא", phFQ: "רבע ראשון", phWaxG: "כמעט מלא",
+  phFull: "ירח מלא", phWanG: "מתרוקן", phLQ: "רבע אחרון", phWanC: "סהר מתרוקן",
+  pFalling: "לחץ יורד לרוב מעורר את הדגים. חלון טוב.",
+  pRising: "לחץ עולה עלול להאט את הנשיכה מיד אחרי חזית, ואז להתייצב לדיג סביר.",
+  pStable: "לחץ יציב, הדגים שומרים על הדפוס הרגיל שלהם.",
+  errLoad: m => "לא הצלחנו לטעון את נתוני התחזית (" + m + "). בדוק את החיבור ונסה שוב.",
+  errNoPlace: q => "לא נמצא מקום עבור '" + q + "'.",
+  errSearch: m => "חיפוש המקום נכשל (" + m + ").",
+  errGeo: "הדפדפן הזה לא תומך באיתור מיקום.",
+  errGeoDenied: m => "המיקום לא זמין (" + m + "). מוצגת נקודת ברירת המחדל - הזן קואורדינטות כדי לבחור נקודה אחרת.",
+  errLatLon: "הזן קו רוחב (-90..90) וקו אורך (-180..180) תקינים.",
+  defaultSpot: "חוף ראשון לציון (ברירת מחדל)",
+  footer: 'נתוני מזג אוויר וים: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). מופת הירח מחושבת במכשיר שלך. מפה &copy; תורמי <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>, נבנה עם <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. ללא חשבונות, ללא מפתחות, ללא מעקב.'
+}
+};
+const t = k => I18N[LANG][k];
+function setLang(lang, save) {
+  LANG = lang;
+  if (save) { try { localStorage.setItem("mishfish-lang", lang); } catch (e) {} }
+  document.documentElement.lang = lang;
+  document.documentElement.dir = lang === "he" ? "rtl" : "ltr";
+  document.title = I18N[lang].title;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.innerHTML = I18N[lang][el.dataset.i18n]; });
+  document.querySelectorAll("[data-i18n-ph]").forEach(el => { el.placeholder = I18N[lang][el.dataset.i18nPh]; });
+  document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", I18N[lang][el.dataset.i18nAria]); });
+  $("langEn").classList.toggle("ghost", lang !== "en");
+  $("langHe").classList.toggle("ghost", lang !== "he");
+}
+
+const DEFAULT = { lat: 31.95, lon: 34.70 };
 let SPOT = { ...DEFAULT };
 
-const WMO = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Light showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, heavy hail"};
+const WMO_EN = {0:"Clear sky",1:"Mainly clear",2:"Partly cloudy",3:"Overcast",45:"Fog",48:"Icy fog",51:"Light drizzle",53:"Drizzle",55:"Heavy drizzle",56:"Freezing drizzle",57:"Freezing drizzle",61:"Light rain",63:"Rain",65:"Heavy rain",66:"Freezing rain",67:"Freezing rain",71:"Light snow",73:"Snow",75:"Heavy snow",77:"Snow grains",80:"Light showers",81:"Showers",82:"Heavy showers",85:"Snow showers",86:"Snow showers",95:"Thunderstorm",96:"Thunderstorm, hail",99:"Thunderstorm, heavy hail"};
+const WMO_HE = {0:"שמים בהירים",1:"בהיר ברובו",2:"מעונן חלקית",3:"מעונן",45:"ערפל",48:"ערפל קפוא",51:"טפטוף קל",53:"טפטוף",55:"טפטוף כבד",56:"טפטוף קפוא",57:"טפטוף קפוא",61:"גשם קל",63:"גשם",65:"גשם כבד",66:"גשם קפוא",67:"גשם קפוא",71:"שלג קל",73:"שלג",75:"שלג כבד",77:"גרגירי שלג",80:"משקעים קלים",81:"משקעים",82:"משקעים כבדים",85:"משקעי שלג",86:"משקעי שלג",95:"סופת רעמים",96:"סופת רעמים עם ברד",99:"סופת רעמים עם ברד כבד"};
+const WMO = { en: WMO_EN, he: WMO_HE };
 
 const $ = id => document.getElementById(id);
 const fmt = (v, d=1) => (v === null || v === undefined || isNaN(v)) ? "-" : (+v).toFixed(d);
-const degToCompass = d => ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"][Math.round(d/22.5)%16];
+const COMPASS = {
+  en: ["N","NNE","NE","ENE","E","ESE","SE","SSE","S","SSW","SW","WSW","W","WNW","NW","NNW"],
+  he: ["צפון","צפון-צפון-מזרח","צפון-מזרח","מזרח-צפון-מזרח","מזרח","מזרח-דרום-מזרח","דרום-מזרח","דרום-דרום-מזרח","דרום","דרום-דרום-מערב","דרום-מערב","מערב-דרום-מערב","מערב","מערב-צפון-מערב","צפון-מערב","צפון-צפון-מערב"]
+};
+const degToCompass = d => COMPASS[LANG][Math.round(d/22.5)%16];
 const kmhToKn = k => k * 0.539957;
 function dayTime(t) {
   const d = new Date(t), now = new Date();
   const hh = String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   const tomorrow = new Date(now.getTime() + 86400000);
-  const day = d.toDateString() === now.toDateString() ? "today"
-    : d.toDateString() === tomorrow.toDateString() ? "tomorrow"
-    : ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][d.getDay()];
+  const day = d.toDateString() === now.toDateString() ? t("today")
+    : d.toDateString() === tomorrow.toDateString() ? t("tomorrow")
+    : t("days")[d.getDay()];
   return day + " " + hh;
 }
 
@@ -210,14 +340,14 @@ function hourIndex(times) {
   return best;
 }
 
-function trend(nowV, pastV, unit, thresh, invert) {
+function trend(nowV, pastV, unit, thresh, invert, perKey) {
   if (nowV === null || pastV === null || nowV === undefined || pastV === undefined) return "";
   const d = nowV - pastV;
-  let cls = "flat", arrow = "→", word = "Steady";
-  if (d > thresh) { cls = invert ? "down" : "up"; arrow = "↑"; word = "Rising"; }
-  else if (d < -thresh) { cls = invert ? "up" : "down"; arrow = "↓"; word = "Falling"; }
+  let cls = "flat", arrow = "→", word = t("steady");
+  if (d > thresh) { cls = invert ? "down" : "up"; arrow = "↑"; word = t("rising"); }
+  else if (d < -thresh) { cls = invert ? "up" : "down"; arrow = "↓"; word = t("falling"); }
   const sign = d > 0 ? "+" : "";
-  return `<span class="pill ${cls}">${arrow} ${word} ${sign}${fmt(d,1)} ${unit} / 3h</span>`;
+  return `<span class="pill ${cls}">${arrow} ${word} <span dir="ltr">${sign}${fmt(d,1)} ${unit}</span> ${t(perKey || "per3h")}</span>`;
 }
 
 function spark(svg, values, times, idx) {
@@ -247,11 +377,12 @@ function moonInfo(date) {
   const age = (((date.getTime() - known) / 86400000) % synodic + synodic) % synodic;
   const illum = (1 - Math.cos(2 * Math.PI * age / synodic)) / 2;
   const phases = [
-    [1.84566, "New moon", "🌑"], [5.53699, "Waxing crescent", "🌒"], [9.22831, "First quarter", "🌓"],
-    [12.91963, "Waxing gibbous", "🌔"], [16.61096, "Full moon", "🌕"], [20.30228, "Waning gibbous", "🌖"],
-    [23.99361, "Last quarter", "🌗"], [27.68493, "Waning crescent", "🌘"], [synodic + 1, "New moon", "🌑"]
+    [1.84566, "phNew", "🌑"], [5.53699, "phWaxC", "🌒"], [9.22831, "phFQ", "🌓"],
+    [12.91963, "phWaxG", "🌔"], [16.61096, "phFull", "🌕"], [20.30228, "phWanG", "🌖"],
+    [23.99361, "phLQ", "🌗"], [27.68493, "phWanC", "🌘"], [synodic + 1, "phNew", "🌑"]
   ];
-  const [, name, emoji] = phases.find(p => age < p[0]);
+  const [, nameKey, emoji] = phases.find(p => age < p[0]);
+  const name = t(nameKey);
   const waxing = age < synodic / 2;
   const toFull = ((synodic / 2) - age + synodic) % synodic;
   const toNew = (synodic - age) % synodic;
@@ -279,7 +410,7 @@ function weekBars(svg, times, values) {
     const v = days[k] > 0 ? days[k] : 0;
     const bh = (v / max) * (H - labelH - valH - pad);
     const x = pad + i * bw + 3, y = H - labelH - bh;
-    const wd = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"][new Date(k + "T12:00").getDay()];
+    const wd = t("days")[new Date(k + "T12:00").getDay()];
     out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="var(--ocean)" opacity="${i === 0 ? 0.95 : 0.55}"></rect>`;
     out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--muted)">${v.toFixed(1)}</text>`;
     out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--muted)">${wd}</text>`;
@@ -292,11 +423,11 @@ function renderMoon() {
   $("mEmoji").textContent = m.emoji;
   $("mPhase").textContent = m.name;
   $("mRows").innerHTML =
-    `<div><span class="k">Illumination:</span> ${Math.round(m.illum * 100)}%</div>` +
-    `<div><span class="k">Moon age:</span> ${fmt(m.age,1)} days</div>` +
-    `<div><span class="k">Trend:</span> ${m.waxing ? "Waxing (growing toward full)" : "Waning (shrinking toward new)"}</div>` +
-    `<div><span class="k">Next full moon:</span> in ${Math.ceil(m.toFull)} day${Math.ceil(m.toFull) === 1 ? "" : "s"}</div>` +
-    `<div><span class="k">Next new moon:</span> in ${Math.ceil(m.toNew)} day${Math.ceil(m.toNew) === 1 ? "" : "s"}</div>`;
+    `<div><span class="k">${t("illumination")}</span> <span dir="ltr">${Math.round(m.illum * 100)}%</span></div>` +
+    `<div><span class="k">${t("moonAge")}</span> ${fmt(m.age,1)} ${t("daysUnit")}</div>` +
+    `<div><span class="k">${t("trendK")}</span> ${m.waxing ? t("waxing") : t("waning")}</div>` +
+    `<div><span class="k">${t("nextFull")}</span> ${t("inDays")(Math.ceil(m.toFull))}</div>` +
+    `<div><span class="k">${t("nextNew")}</span> ${t("inDays")(Math.ceil(m.toNew))}</div>`;
 }
 
 function showErr(msg) { const e = $("errBox"); e.textContent = msg; e.style.display = msg ? "block" : "none"; }
@@ -321,30 +452,30 @@ async function load(spot) {
       fetch(mUrl).then(r => { if (!r.ok) throw new Error("marine " + r.status); return r.json(); })
     ]);
   } catch (e) {
-    showErr("Could not load forecast data (" + e.message + "). Check your connection and try again.");
+    showErr(t("errLoad")(e.message));
     return;
   }
 
   // Right now
   const c = fc.current;
-  $("nowTemp").innerHTML = `${fmt(c.temperature_2m,1)}<small> °C · ${WMO[c.weather_code] || "Weather code " + c.weather_code}</small>`;
+  $("nowTemp").innerHTML = `${fmt(c.temperature_2m,1)}<small> °C · ${WMO[LANG][c.weather_code] || t("weatherCode")(c.weather_code)}</small>`;
   $("nowRows").innerHTML =
-    `<div><span class="k">Wind:</span> ${fmt(c.wind_speed_10m,0)} km/h (${fmt(kmhToKn(c.wind_speed_10m),0)} kn) from ${degToCompass(c.wind_direction_10m)} (${Math.round(c.wind_direction_10m)}°)</div>` +
-    `<div><span class="k">Gusts:</span> ${fmt(c.wind_gusts_10m,0)} km/h</div>`;
+    `<div><span class="k">${t("wind")}</span> <span dir="ltr">${fmt(c.wind_speed_10m,0)} km/h (${fmt(kmhToKn(c.wind_speed_10m),0)} kn)</span> ${t("from")} ${degToCompass(c.wind_direction_10m)} <span dir="ltr">(${Math.round(c.wind_direction_10m)}°)</span></div>` +
+    `<div><span class="k">${t("gusts")}</span> <span dir="ltr">${fmt(c.wind_gusts_10m,0)} km/h</span></div>`;
 
   // Pressure
   const pTimes = fc.hourly.time, pVals = fc.hourly.pressure_msl;
   const pi = hourIndex(pTimes);
   const pNow = pVals[pi], p3 = pVals[Math.max(0, pi - 3)];
-  $("pNow").innerHTML = `${fmt(pNow,1)}<small> hPa (sea level)</small>`;
+  $("pNow").innerHTML = `${fmt(pNow,1)}<small> ${t("hpaUnit")}</small>`;
   $("pTrend").innerHTML = trend(pNow, p3, "hPa", 0.7, false);
   spark($("pSpark"), pVals.slice(Math.max(0, pi - 23), pi + 1), pTimes, Math.min(23, pi));
   const pDiff = (pNow !== null && p3 !== null) ? pNow - p3 : 0;
   $("pNote").textContent = pDiff < -0.7
-    ? "Falling pressure often turns fish on. Good window."
+    ? t("pFalling")
     : pDiff > 0.7
-    ? "Rising pressure can slow the bite right after a front, then settle into decent fishing."
-    : "Stable pressure, fish keep their usual pattern.";
+    ? t("pRising")
+    : t("pStable");
 
   // Waves
   const wVals = mc.hourly.wave_height;
@@ -354,19 +485,19 @@ async function load(spot) {
     const wi = hourIndex(wTimes);
     const h = mc.hourly;
     const wNow = h.wave_height[wi], w3 = h.wave_height[Math.max(0, wi - 3)];
-    $("wNow").innerHTML = `${fmt(wNow,2)}<small> m waves · ${fmt(h.wave_period[wi],0)} s period</small>`;
+    $("wNow").innerHTML = `${fmt(wNow,2)}<small> ${t("wavesSmall")(fmt(h.wave_period[wi],0))}</small>`;
     const cur = h.ocean_current_velocity ? h.ocean_current_velocity[wi] : null;
     const cur3 = h.ocean_current_velocity ? h.ocean_current_velocity[Math.max(0, wi - 3)] : null;
     const curDir = h.ocean_current_direction ? h.ocean_current_direction[wi] : null;
     $("wTrend").innerHTML = trend(wNow, w3, "m", 0.1, false) + " " +
-      (cur === null || cur === undefined ? "" : trend(cur, cur3, "km/h", 0.1, false).replace("/ 3h", "current / 3h"));
+      (cur === null || cur === undefined ? "" : trend(cur, cur3, "km/h", 0.1, false, "currentPer3h"));
     $("wRows").innerHTML =
-      `<div><span class="k">Wave direction:</span> ${degToCompass(h.wave_direction[wi])} (${Math.round(h.wave_direction[wi])}°)</div>` +
-      `<div><span class="k">Swell:</span> ${fmt(h.swell_wave_height[wi],2)} m · ${fmt(h.swell_wave_period[wi],0)} s from ${degToCompass(h.swell_wave_direction[wi])}</div>` +
+      `<div><span class="k">${t("waveDir")}</span> ${degToCompass(h.wave_direction[wi])} <span dir="ltr">(${Math.round(h.wave_direction[wi])}°)</span></div>` +
+      `<div><span class="k">${t("swell")}</span> <span dir="ltr">${fmt(h.swell_wave_height[wi],2)} m · ${fmt(h.swell_wave_period[wi],0)} s</span> ${t("from")} ${degToCompass(h.swell_wave_direction[wi])}</div>` +
       (cur === null || cur === undefined
-        ? `<div><span class="k">Current:</span> no current data for this spot</div>`
-        : `<div><span class="k">Current:</span> ${fmt(cur,1)} km/h (${fmt(cur / 1.852,1)} kn) toward ${degToCompass(curDir)} (${Math.round(curDir)}°)</div>`) +
-      `<div><span class="k">Sea temperature:</span> ${fmt(h.sea_surface_temperature[wi],1)} °C</div>`;
+        ? `<div><span class="k">${t("current")}</span> ${t("noCurrent")}</div>`
+        : `<div><span class="k">${t("current")}</span> <span dir="ltr">${fmt(cur,1)} km/h (${fmt(cur / 1.852,1)} kn)</span> ${t("toward")} ${degToCompass(curDir)} <span dir="ltr">(${Math.round(curDir)}°)</span></div>`) +
+      `<div><span class="k">${t("seaTemp")}</span> <span dir="ltr">${fmt(h.sea_surface_temperature[wi],1)} °C</span></div>`;
     spark($("wSpark"), h.wave_height.slice(Math.max(0, wi - 23), wi + 1), wTimes, Math.min(23, wi));
     weekBars($("weekBars"), wTimes, h.wave_height);
 
@@ -375,7 +506,7 @@ async function load(spot) {
     if (sl && sl.some(v => v !== null)) {
       const ti = wi;
       const sNow = sl[ti];
-      $("tNow").innerHTML = `${fmt(sNow,2)}<small> m vs mean sea level</small>`;
+      $("tNow").innerHTML = `${fmt(sNow,2)}<small> ${t("vsMsl")}</small>`;
       let hi = ti, lo = ti;
       for (let i = ti + 1; i < Math.min(sl.length, ti + 49); i++) {
         if (sl[i] === null || sl[i] === undefined) continue;
@@ -383,23 +514,23 @@ async function load(spot) {
         if (sl[lo] === null || sl[i] < sl[lo]) lo = i;
       }
       $("tRows").innerHTML =
-        `<div><span class="k">Highest (next 48h):</span> ${fmt(sl[hi],2)} m ${dayTime(wTimes[hi])}</div>` +
-        `<div><span class="k">Lowest (next 48h):</span> ${fmt(sl[lo],2)} m ${dayTime(wTimes[lo])}</div>`;
+        `<div><span class="k">${t("highest")}</span> <span dir="ltr">${fmt(sl[hi],2)} m</span> ${dayTime(wTimes[hi])}</div>` +
+        `<div><span class="k">${t("lowest")}</span> <span dir="ltr">${fmt(sl[lo],2)} m</span> ${dayTime(wTimes[lo])}</div>`;
       const s0 = Math.max(0, ti - 24);
       spark($("tSpark"), sl.slice(s0, ti + 49), wTimes, ti - s0);
     } else {
       $("tNow").textContent = "-";
-      $("tRows").innerHTML = `<div>No sea level data for this spot.</div>`;
+      $("tRows").innerHTML = `<div>${t("noSeaLevel")}</div>`;
       spark($("tSpark"), [], [], 0);
     }
   } else {
     $("wNow").textContent = "-";
     $("wTrend").innerHTML = "";
-    $("wRows").innerHTML = `<div>No marine data for this spot. It may be too far inland - try a point closer to the coast.</div>`;
+    $("wRows").innerHTML = `<div>${t("noMarine")}</div>`;
     spark($("wSpark"), [], [], 0);
     weekBars($("weekBars"), [], []);
     $("tNow").textContent = "-";
-    $("tRows").innerHTML = `<div>No sea level data for this spot.</div>`;
+    $("tRows").innerHTML = `<div>${t("noSeaLevel")}</div>`;
     spark($("tSpark"), [], [], 0);
   }
 
@@ -466,9 +597,9 @@ async function doSearch() {
   const hits = $("hits");
   hits.innerHTML = "";
   try {
-    const r = await fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=5&language=en&format=json");
+    const r = await fetch("https://geocoding-api.open-meteo.com/v1/search?name=" + encodeURIComponent(q) + "&count=5&language=" + (LANG === "he" ? "he" : "en") + "&format=json");
     const d = await r.json();
-    if (!d.results || !d.results.length) { showErr("No place found for '" + q + "'."); return; }
+    if (!d.results || !d.results.length) { showErr(t("errNoPlace")(q)); return; }
     showErr("");
     d.results.forEach(p => {
       const b = document.createElement("button");
@@ -482,19 +613,19 @@ async function doSearch() {
       hits.appendChild(b);
     });
   } catch (e) {
-    showErr("Place search failed (" + e.message + ").");
+    showErr(t("errSearch")(e.message));
   }
 }
 $("searchBtn").addEventListener("click", doSearch);
 $("addrIn").addEventListener("keydown", e => { if (e.key === "Enter") doSearch(); });
 
 $("geoBtn").addEventListener("click", () => {
-  if (!navigator.geolocation) { showErr("Geolocation is not supported by this browser."); return; }
+  if (!navigator.geolocation) { showErr(t("errGeo")); return; }
   navigator.geolocation.getCurrentPosition(
-    pos => load({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: "your location" }),
+    pos => load({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: t("yourLocation") }),
     err => {
-      load({ ...DEFAULT });
-      showErr("Location unavailable (" + err.message + "). Showing the default spot - enter coordinates to pick another.");
+      load({ ...DEFAULT, label: t("defaultSpot") });
+      showErr(t("errGeoDenied")(err.message));
     },
     { timeout: 10000, maximumAge: 300000 }
   );
@@ -503,7 +634,7 @@ $("geoBtn").addEventListener("click", () => {
 $("setBtn").addEventListener("click", () => {
   const lat = parseFloat($("latIn").value), lon = parseFloat($("lonIn").value);
   if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
-    showErr("Enter a valid latitude (-90..90) and longitude (-180..180).");
+    showErr(t("errLatLon"));
     return;
   }
   load({ lat, lon, label: `${lat.toFixed(3)}, ${lon.toFixed(3)}` });
@@ -511,7 +642,7 @@ $("setBtn").addEventListener("click", () => {
 
 // --- Animated current flow map (windy-style particle streaks) ---
 let flowMap = null, flowMarker = null, flowField = null, flowRAF = 0, flowParticles = [], flowTimer = null, flowVisible = true;
-const FLOW = { cols: 12, rows: 9 };
+const FLOW = { cols: 20, rows: 15 };
 const reducedMotion = () => matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function initFlowMap(lat, lon) {
@@ -563,6 +694,22 @@ function clearFlowCanvas() {
   ctx.restore();
 }
 
+// Batched current-field fetch: chunks of 120 coordinate pairs per request.
+function fetchGrid(lats, lons) {
+  const CHUNK = 120, reqs = [];
+  for (let i = 0; i < lats.length; i += CHUNK) {
+    reqs.push(fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + lats.slice(i, i + CHUNK).join(",") +
+      "&longitude=" + lons.slice(i, i + CHUNK).join(",") +
+      "&hourly=ocean_current_velocity,ocean_current_direction&forecast_days=1&timezone=auto")
+      .then(r => r.json()));
+  }
+  return Promise.all(reqs).then(parts => {
+    const out = [];
+    parts.forEach(p => (Array.isArray(p) ? p : [p]).forEach(x => out.push(x)));
+    return out;
+  });
+}
+
 function refreshFlow() {
   if (!flowMap) return;
   const b = flowMap.getBounds();
@@ -571,11 +718,8 @@ function refreshFlow() {
     lats.push((b.getSouth() + (r + 0.5) / rows * (b.getNorth() - b.getSouth())).toFixed(3));
     lons.push((b.getWest() + (c + 0.5) / cols * (b.getEast() - b.getWest())).toFixed(3));
   }
-  fetch("https://marine-api.open-meteo.com/v1/marine?latitude=" + lats.join(",") + "&longitude=" + lons.join(",") +
-        "&hourly=ocean_current_velocity,ocean_current_direction&forecast_days=1&timezone=auto")
-    .then(r => r.json())
-    .then(d => {
-      const arr = Array.isArray(d) ? d : [d];
+  fetchGrid(lats, lons)
+    .then(arr => {
       const u = new Float32Array(cols * rows), v = new Float32Array(cols * rows), ok = new Uint8Array(cols * rows);
       let maxSp = 0;
       arr.forEach((p, i) => {
@@ -603,6 +747,11 @@ function sampleFlow(lat, lon) {
   const fx = (lon - f.west) / (f.east - f.west) * f.cols - 0.5;
   const fy = (lat - f.south) / (f.north - f.south) * f.rows - 0.5;
   const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  // Land mask: the nearest model cell must carry data (land cells come back null),
+  // so streaks never get drawn over land.
+  const cx = Math.min(f.cols - 1, Math.max(0, Math.round(fx)));
+  const cy = Math.min(f.rows - 1, Math.max(0, Math.round(fy)));
+  if (!f.ok[cy * f.cols + cx]) return null;
   let su = 0, sv = 0, sw = 0;
   for (let dy = 0; dy <= 1; dy++) for (let dx = 0; dx <= 1; dx++) {
     const x = x0 + dx, y = y0 + dy;
@@ -725,10 +874,13 @@ function drawStaticFlow() {
   }
 }
 
+setLang(LANG, false);
+$("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT }); });
+$("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT }); });
 initMap(DEFAULT.lat, DEFAULT.lon);
 initFlowMap(DEFAULT.lat, DEFAULT.lon);
 refreshFlow();
-load({ ...DEFAULT });
+load({ ...DEFAULT, label: t("defaultSpot") });
 $("geoBtn").click();
 </script>
 </body>
