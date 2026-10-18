@@ -163,7 +163,7 @@ html[dir="rtl"] h2 { letter-spacing: .05em; }
     <div class="rows" id="wRows"></div>
     <svg class="spark" id="wSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
     <p class="note" style="margin-bottom:4px;" data-i18n="weekNote">Max wave height per day, next 7 days:</p>
-    <svg class="spark" id="weekBars" viewBox="0 0 300 90" style="height:90px;" aria-hidden="true"></svg>
+    <svg class="spark" id="weekBars" viewBox="0 0 300 130" style="height:130px;" aria-hidden="true"></svg>
   </section>
 
   <section id="tide">
@@ -204,11 +204,11 @@ en: {
   flowNote: "Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.",
   nowTitle: "Right now", pressureTitle: "Pressure", wavesTitle: "Waves & swell",
   tideTitle: "Sea level & tide", moonTitle: "Moon",
-  tideNote: "The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.",
+  tideNote: "The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more. Numbers show the level compared to the 3-day average.",
   weekNote: "Max wave height per day, next 7 days:",
   moonNote: "Computed locally from the date. Full and new moons are the classic high-activity windows.",
   hpaUnit: "hPa (sea level)",
-  cmUnit: "cm", mUnit: "m",
+  cmUnit: "cm",
   wind: "Wind:", gusts: "Gusts:", from: "from",
   waveDir: "Wave direction:", swell: "Swell:", current: "Current:",
   noCurrent: "no current data for this spot", toward: "toward",
@@ -219,7 +219,7 @@ en: {
   today: "today", tomorrow: "tomorrow",
   days: ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"],
   daysUnit: "days",
-  vsMsl: "m vs mean sea level",
+  vsAvg: "cm vs 3-day average",
   highest: "Highest (next 48h):", lowest: "Lowest (next 48h):",
   noSeaLevel: "No sea level data for this spot.",
   noMarine: "No marine data for this spot. It may be too far inland - try a point closer to the coast.",
@@ -255,11 +255,11 @@ he: {
   flowNote: "הפסים נסחפים עם זרם המודל: כיוון ומהירות יחסית. נתוני מודל גסים, להערכה בלבד ופחות אמינים ממש ליד החוף.",
   nowTitle: "עכשיו", pressureTitle: "לחץ אוויר", wavesTitle: "גלים וסוול",
   tideTitle: "גובה פני הים וגאות", moonTitle: "ירח",
-  tideNote: "לים התיכון כמעט אין גאות: התנודה היומית כאן בדרך כלל פחות מ-30 ס״מ, ורוב מה שרואים הוא סחף איטי של גובה פני הים, לא גאות בסגנון האוקיינוס. לדיג, הרוח והזרמים חשובים יותר.",
+  tideNote: "לים התיכון כמעט אין גאות: התנודה היומית כאן בדרך כלל פחות מ-30 ס״מ, ורוב מה שרואים הוא סחף איטי של גובה פני הים, לא גאות בסגנון האוקיינוס. לדיג, הרוח והזרמים חשובים יותר. הגובה מוצג ביחס לממוצע של 3 הימים.",
   weekNote: "גובה גל מקסימלי ליום, 7 הימים הבאים:",
   moonNote: "מחושב מקומית מהתאריך. ירח מלא ומולד הם חלונות הפעילות הקלאסיים לדיג.",
   hpaUnit: "hPa (מותאם לגובה פני הים)",
-  cmUnit: "ס״מ", mUnit: "מ׳",
+  cmUnit: "ס״מ",
   wind: "רוח:", gusts: "משבים:", from: "מ",
   waveDir: "כיוון גלים:", swell: "סוול:", current: "זרם:",
   noCurrent: "אין נתוני זרם לנקודה זו", toward: "אל",
@@ -270,8 +270,8 @@ he: {
   today: "היום", tomorrow: "מחר",
   days: ["א׳", "ב׳", "ג׳", "ד׳", "ה׳", "ו׳", "ש׳"],
   daysUnit: "ימים",
-  vsMsl: "מ׳ ביחס לגובה פני הים",
-  highest: "הכי גבוה (48 השעות הבאות):", lowest: "הכי נמוך (48 השעות הבאות):",
+  vsAvg: "ס״מ ביחס לממוצע 3 הימים",
+  highest: "הכי גבוה ב-48 השעות הבאות:", lowest: "הכי נמוך ב-48 השעות הבאות:",
   noSeaLevel: "אין נתוני גובה פני ים לנקודה זו.",
   noMarine: "אין נתוני ים לנקודה זו. ייתכן שהיא רחוקה מדי מהחוף - נסה נקודה קרובה יותר לחוף.",
   marineBusy: "נתוני הים עמוסים זמנית (מגבלת קצב). מנסה שוב בעוד כדקה...",
@@ -382,7 +382,7 @@ function spark(svg, values, times, idx, opts) {
   [min, (min + max) / 2, max].forEach(tv => {
     const y = yAt(tv);
     out += `<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W - padR}" y2="${y.toFixed(1)}" stroke="var(--line)" stroke-width="1" opacity="0.5"></line>`;
-    out += `<text x="${padL - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--muted)">${fmt(tv, dec)}</text>`;
+    out += `<text x="${padL - 4}" y="${(y + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--muted)">${opts.signed && tv > 0 ? "+" + fmt(tv, dec) : fmt(tv, dec)}</text>`;
   });
   out += `<line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H - padB}" stroke="var(--line)" stroke-width="1"></line>`;
   // x axis: baseline + time labels (start, middle, end)
@@ -430,9 +430,12 @@ function weekBars(svg, times, values) {
     if (v !== null && v !== undefined && v > days[key]) days[key] = v;
   });
   const keys = order.slice(0, 7);
-  if (!keys.length) { svg.innerHTML = ""; return; }
+  if (!keys.length) { svg.innerHTML = ""; svg._barArgs = null; return; }
+  svg._barArgs = [times, values];
   const max = Math.max(...keys.map(k => days[k] > 0 ? days[k] : 0), 10);
-  const W = 300, H = 90, pad = 4, labelH = 14, valH = 12;
+  const W = Math.max(280, Math.round(svg.clientWidth) || 300), H = 130, pad = 4, labelH = 18, valH = 16;
+  svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+  svg.removeAttribute("preserveAspectRatio");
   const bw = (W - pad * 2) / keys.length;
   let out = "";
   keys.forEach((k, i) => {
@@ -441,8 +444,8 @@ function weekBars(svg, times, values) {
     const x = pad + i * bw + 3, y = H - labelH - bh;
     const wd = t("days")[new Date(k + "T12:00").getDay()];
     out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="var(--ocean)" opacity="${i === 0 ? 0.95 : 0.55}"></rect>`;
-    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${(y - 3).toFixed(1)}" text-anchor="middle" font-size="9" fill="var(--muted)">${Math.round(v)}</text>`;
-    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${H - 2}" text-anchor="middle" font-size="9" fill="var(--muted)">${wd}</text>`;
+    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="12" fill="var(--muted)">${Math.round(v)}</text>`;
+    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--muted)">${wd}</text>`;
   });
   svg.innerHTML = out;
 }
@@ -550,12 +553,18 @@ async function load(spot) {
     spark($("wSpark"), h.wave_height.slice(ws0, wi + 1).map(toCm), wTimes.slice(ws0, wi + 1), wi - ws0, { unit: t("cmUnit"), dec: 0 });
     weekBars($("weekBars"), wTimes, h.wave_height.map(toCm));
 
-    // Sea level / tide
+    // Sea level / tide. The model's absolute level (m vs MSL) carries a local
+    // bias here, so show the change from the average of the shown window instead.
     const sl = h.sea_level_height_msl;
     if (sl && sl.some(v => v !== null)) {
       const ti = wi;
-      const sNow = sl[ti];
-      $("tNow").innerHTML = `${fmt(sNow,2)}<small> ${t("vsMsl")}</small>`;
+      const s0 = Math.max(0, ti - 24);
+      const win = sl.slice(s0, ti + 49), winTimes = wTimes.slice(s0, ti + 49);
+      const wv = win.filter(v => v !== null && v !== undefined);
+      const avg = wv.reduce((a, b) => a + b, 0) / wv.length;
+      const offCm = v => (v === null || v === undefined) ? null : (v - avg) * 100;
+      const sgn = v => (v === null || v === undefined) ? "-" : (v > 0 ? "+" : "") + fmt(v, 0);
+      $("tNow").innerHTML = `<span dir="ltr">${sgn(offCm(sl[ti]))}</span><small> ${t("vsAvg")}</small>`;
       let hi = ti, lo = ti;
       for (let i = ti + 1; i < Math.min(sl.length, ti + 49); i++) {
         if (sl[i] === null || sl[i] === undefined) continue;
@@ -563,10 +572,9 @@ async function load(spot) {
         if (sl[lo] === null || sl[i] < sl[lo]) lo = i;
       }
       $("tRows").innerHTML =
-        `<div><span class="k">${t("highest")}</span> <span dir="ltr">${fmt(sl[hi],2)} m</span> ${dayTime(wTimes[hi])}</div>` +
-        `<div><span class="k">${t("lowest")}</span> <span dir="ltr">${fmt(sl[lo],2)} m</span> ${dayTime(wTimes[lo])}</div>`;
-      const s0 = Math.max(0, ti - 24);
-      spark($("tSpark"), sl.slice(s0, ti + 49), wTimes.slice(s0, ti + 49), ti - s0, { unit: t("mUnit"), dec: 2 });
+        `<div><span class="k">${t("highest")}</span> <span dir="ltr">${sgn(offCm(sl[hi]))} ${t("cmUnit")}</span> ${dayTime(wTimes[hi])}</div>` +
+        `<div><span class="k">${t("lowest")}</span> <span dir="ltr">${sgn(offCm(sl[lo]))} ${t("cmUnit")}</span> ${dayTime(wTimes[lo])}</div>`;
+      spark($("tSpark"), win.map(offCm), winTimes, ti - s0, { unit: t("cmUnit"), dec: 0, signed: true });
     } else {
       $("tNow").textContent = "-";
       $("tRows").innerHTML = `<div>${t("noSeaLevel")}</div>`;
@@ -1015,7 +1023,7 @@ function drawStaticFlow() {
 }
 
 window.addEventListener("resize", () => {
-  document.querySelectorAll("svg.spark").forEach(s => { if (s._sparkArgs) spark(s, ...s._sparkArgs); });
+  document.querySelectorAll("svg.spark").forEach(s => { if (s._sparkArgs) spark(s, ...s._sparkArgs); if (s._barArgs) weekBars(s, ...s._barArgs); });
 });
 setLang(LANG, false);
 $("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
