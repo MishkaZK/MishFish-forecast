@@ -650,7 +650,7 @@ $("geoBtn").addEventListener("click", () => {
   navigator.geolocation.getCurrentPosition(
     pos => load({ lat: pos.coords.latitude, lon: pos.coords.longitude, label: t("yourLocation") }),
     err => {
-      load({ ...DEFAULT, label: t("defaultSpot") });
+      load({ ...DEFAULT, isDefault: true, label: t("defaultSpot") });
       showErr(t("errGeoDenied")(err.message));
     },
     { timeout: 10000, maximumAge: 300000 }
@@ -987,12 +987,12 @@ function drawStaticFlow() {
 }
 
 setLang(LANG, false);
-$("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT }); });
-$("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT }); });
+$("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
+$("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
 initMap(DEFAULT.lat, DEFAULT.lon);
 initFlowMap(DEFAULT.lat, DEFAULT.lon);
 refreshFlow();
-load({ ...DEFAULT, label: t("defaultSpot") });
+load({ ...DEFAULT, isDefault: true, label: t("defaultSpot") });
 $("geoBtn").click();
 </script>
 </body>
