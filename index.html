@@ -95,11 +95,31 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 .langbar button { font-size: .78rem; padding: 4px 12px; border-radius: 8px; }
 #map, #flowWrap { direction: ltr; }
 html[dir="rtl"] h2 { letter-spacing: .05em; }
+
+/* Fish guide slider */
+#fishGuide { grid-column: 1 / -1; }
+.fslider { position: relative; margin-top: 14px; }
+.ftrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 14px; }
+.ftrack::-webkit-scrollbar { display: none; }
+.fslide { min-width: 100%; scroll-snap-align: start; display: grid; grid-template-columns: minmax(0, 46%) 1fr; gap: 20px; align-items: center; padding: 8px 46px; }
+.fslide img { width: 100%; display: block; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
+.fname { font-size: 1.35rem; font-weight: 700; letter-spacing: -.02em; line-height: 1.25; }
+.flatin { color: var(--muted); font-style: italic; font-size: .85rem; margin: 2px 0 10px; direction: ltr; text-align: start; }
+.frow { font-size: .94rem; margin-top: 7px; }
+.frow b { color: var(--ocean); font-weight: 650; }
+.fbtn { position: absolute; top: 50%; transform: translateY(-50%); z-index: 2; width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line); background: rgba(255,255,255,.92); box-shadow: 0 4px 14px rgba(21,77,95,.12); font-size: 1.25rem; line-height: 1; color: var(--ocean); cursor: pointer; padding: 0; }
+.fbtn.prev { inset-inline-start: 2px; }
+.fbtn.next { inset-inline-end: 2px; }
+html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
+.fdots { display: flex; gap: 7px; justify-content: center; margin-top: 12px; }
+.fdots button { width: 8px; height: 8px; border-radius: 50%; border: none; background: rgba(50,110,127,.25); padding: 0; cursor: pointer; }
+.fdots button.on { background: var(--ocean); }
 @media (max-width: 640px) {
   body { padding-inline: 20px; }
   header { padding: 52px 0 30px; margin-bottom: 22px; }
   main { grid-template-columns: 1fr; gap: 16px; }
   section { padding: 22px; border-radius: 16px; }
+  .fslide { grid-template-columns: 1fr; padding: 8px 40px; }
   .big { font-size: 1.8rem; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
@@ -181,6 +201,17 @@ html[dir="rtl"] h2 { letter-spacing: .05em; }
     <div class="rows" id="mRows"></div>
     <p class="note" data-i18n="moonNote">Computed locally from the date. Full and new moons are the classic high-activity windows.</p>
   </section>
+
+  <section id="fishGuide">
+    <h2 data-i18n="fishGuideTitle">Fish guide</h2>
+    <div class="fslider">
+      <button class="fbtn prev" id="fishPrev" type="button" aria-label="previous fish">&#8249;</button>
+      <div class="ftrack" id="fishTrack"></div>
+      <button class="fbtn next" id="fishNext" type="button" aria-label="next fish">&#8250;</button>
+    </div>
+    <div class="fdots" id="fishDots"></div>
+    <p class="note" style="margin-top:10px;" data-i18n="fishNote">Common catches along Israel's Mediterranean coast.</p>
+  </section>
 </main>
 
 <footer data-i18n="footer">
@@ -241,6 +272,10 @@ en: {
   errGeoDenied: m => "Location unavailable (" + m + "). Showing the default spot - enter coordinates to pick another.",
   errLatLon: "Enter a valid latitude (-90..90) and longitude (-180..180).",
   defaultSpot: "Rishon LeTsiyyon beach (default)",
+  fishGuideTitle: "Fish guide - what's biting here",
+  fishActive: "Active hours", fishBehavior: "Behavior", fishBait: "Bait",
+  fishPrevAria: "previous fish", fishNextAria: "next fish",
+  fishNote: "Common catches along Israel's Mediterranean coast, with what attracts each one. Bait and spot tips from the Israeli shore-fishing community.",
   footer: 'Weather &amp; marine data: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). Moon phase computed on your device. Map &copy; <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a> contributors, built with <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. No accounts, no keys, no tracking.'
 },
 he: {
@@ -292,6 +327,10 @@ he: {
   errGeoDenied: m => "המיקום לא זמין (" + m + "). מוצגת נקודת ברירת המחדל - הזן קואורדינטות כדי לבחור נקודה אחרת.",
   errLatLon: "הזן קו רוחב (-90..90) וקו אורך (-180..180) תקינים.",
   defaultSpot: "חוף ראשון לציון (ברירת מחדל)",
+  fishGuideTitle: "מדריך דגים - מה נתפס כאן",
+  fishActive: "שעות פעילות", fishBehavior: "התנהגות", fishBait: "פיתיון",
+  fishPrevAria: "הדג הקודם", fishNextAria: "הדג הבא",
+  fishNote: "דגים נפוצים בחופי הים התיכון של ישראל, ומה מושך כל אחד. טיפי פיתיון ומיקום מקהילת הדיג מהחוף בישראל.",
   footer: 'נתוני מזג אוויר וים: <a href="https://open-meteo.com/" rel="noopener">Open-Meteo.com</a> (CC BY 4.0). מופת הירח מחושבת במכשיר שלך. מפה &copy; תורמי <a href="https://www.openstreetmap.org/copyright" rel="noopener">OpenStreetMap</a>, נבנה עם <a href="https://leafletjs.com/" rel="noopener">Leaflet</a>. ללא חשבונות, ללא מפתחות, ללא מעקב.'
 }
 };
@@ -307,6 +346,7 @@ function setLang(lang, save) {
   document.querySelectorAll("[data-i18n-aria]").forEach(el => { el.setAttribute("aria-label", I18N[lang][el.dataset.i18nAria]); });
   $("langEn").classList.toggle("ghost", lang !== "en");
   $("langHe").classList.toggle("ghost", lang !== "he");
+  if (typeof FISH !== "undefined") renderFish();
 }
 
 const DEFAULT = { lat: 31.95, lon: 34.70 };
@@ -1025,6 +1065,104 @@ function drawStaticFlow() {
 window.addEventListener("resize", () => {
   document.querySelectorAll("svg.spark").forEach(s => { if (s._sparkArgs) spark(s, ...s._sparkArgs); if (s._barArgs) weekBars(s, ...s._barArgs); });
 });
+
+// --- Fish guide slider ---
+const FISH = [
+  { img: "gilt-head-bream.jpg", latin: "Sparus aurata",
+    en: { name: "Gilt-head bream", hours: "Dawn and dusk. Comes close to sandy beaches in spring.",
+          behavior: "Cruises sandy bottoms by shell beds and reef edges. A cautious biter - use a sensitive rig.",
+          bait: "Sand crab (best), ragworm, mantis shrimp." },
+    he: { name: "דניס", hours: "זריחה ושקיעה. באביב מתקרב לחופים חוליים.",
+          behavior: "משוטט על קרקעית חולית ליד צדפות וקצה ריף. נושך זהיר - ריג רגיש.",
+          bait: "סרטן חולי (הכי טוב), תולעת, גמברי." } },
+  { img: "white-seabream.jpg", latin: "Diplodus sargus",
+    en: { name: "White seabream", hours: "All day, with a peak at dawn and dusk.",
+          behavior: "Hugs rocks, reefs and breakers in the foam zone. Bites close to shore, hook size 4-6.",
+          bait: "Mantis shrimp, squid, chicken, mackerel strip." },
+    he: { name: "סרגוס", hours: "כל היום, שיא בזריחה ובשקיעה.",
+          behavior: "צמוד לסלעים, ריפים ושוברים באזור הקצף. נושך קרוב לחוף, קרס 4-6.",
+          bait: "גמברי, קלמארי, עוף, רצועת מקרל." } },
+  { img: "grouper.jpg", latin: "Epinephelus spp.",
+    en: { name: "Grouper (locus)", hours: "Night is best, also dawn.",
+          behavior: "Ambushes from holes and crevices in the reef. Drop the bait vertically into the hole and hold on - it dives straight back into the rocks.",
+          bait: "Live fish, squid or sardine, mantis shrimp." },
+    he: { name: "לוקוס", hours: "בלילה הכי טוב, גם בזריחה.",
+          behavior: "אורב מחורים וחריצים בריף. מורידים פיתיון אנכית לתוך החור ונאחזים חזק - הוא צולל ישר חזרה לסלעים.",
+          bait: "דג חי, קלמארי או סרדינה, גמברי." } },
+  { img: "european-seabass.jpg", latin: "Dicentrarchus labrax",
+    en: { name: "European seabass", hours: "Dusk and night, especially after a rough sea.",
+          behavior: "Patrols murky surf over sand. Suspicious: long leader, running or fish-finder rig, usually close in.",
+          bait: "Ragworm, live mantis shrimp, squid strip." },
+    he: { name: "לברק", hours: "בערב ובלילה, בעיקר אחרי ים עובד.",
+          behavior: "סייר במים עכורים מעל חול. חשדן: מוביל ארוך, ריג רץ או Fish Finder, לרוב קרוב.",
+          bait: "תולעת, גמברי חי, רצועת קלמארי." } },
+  { img: "meagre.jpg", latin: "Argyrosomus regius",
+    en: { name: "Meagre", hours: "Night.",
+          behavior: "Hunts over deep sandy holes. A prized trophy that runs hard - cast far, or find the drop-off.",
+          bait: "Cuttlefish (best), live fish, squid." },
+    he: { name: "מוסר", hours: "בלילה.",
+          behavior: "צייד מעל בורות חוליים עמוקים. גביע נחשק שבורח חזק - זריקה ארוכה או קרבה למדרון.",
+          bait: "סבידיה (הכי טוב), דג חי, קלמארי." } },
+  { img: "amberjack.jpg", latin: "Seriola dumerili",
+    en: { name: "Greater amberjack", hours: "Dawn and dusk; at night around lit piers.",
+          behavior: "A schooling predator around deep reefs and piers. Smashes live bait and fights brutally.",
+          bait: "Live fish, squid, cuttlefish." },
+    he: { name: "אינטיאס", hours: "זריחה ושקיעה; בלילה סביב מזחים מוארים.",
+          behavior: "טורף בלהקות סביב ריפים עמוקים ומזחים. מתנפל על דג חי ונלחם בפראות.",
+          bait: "דג חי, קלמארי, סבידיה." } },
+  { img: "striped-seabream.jpg", latin: "Lithognathus mormyrus",
+    en: { name: "Striped seabream", hours: "Dawn and dusk.",
+          behavior: "Cruises the sand lanes between reefs. Light biter: small hooks (#1-2), running rig, 30-90 m out.",
+          bait: "Sand crab, ragworm, mantis shrimp." },
+    he: { name: "טרכון", hours: "זריחה ושקיעה.",
+          behavior: "משוטט בשבילי החול בין הריפים. נושך עדין: קרסים קטנים (#1-2), ריג רץ, 30-90 מ'.",
+          bait: "סרטן חולי, תולעת, גמברי." } },
+  { img: "salema.jpg", latin: "Sarpa salpa",
+    en: { name: "Salema (TV fish)", hours: "Late morning, when the sun is high - the odd one out.",
+          behavior: "Schools in the shallows right at your feet. Great fun on ultralight gear with tiny #12 hooks.",
+          bait: "Tiny bits of worm or mantis shrimp." },
+    he: { name: "טלוויזיה", hours: "אחרי הזריחה, כשהשמש גבוהה - היוצא דופן.",
+          behavior: "בלהקות במים הרדודים ממש ליד הרגליים. כיף בציוד קל במיוחד עם קרס #12 זעיר.",
+          bait: "חתיכות זעירות של תולעת או גמברי." } }
+];
+let fishIdx = 0;
+function fishGo(i) {
+  const track = $("fishTrack");
+  i = Math.min(FISH.length - 1, Math.max(0, i));
+  const rtl = document.documentElement.dir === "rtl";
+  track.scrollTo({ left: (rtl ? -1 : 1) * i * track.clientWidth, behavior: "smooth" });
+}
+function updateFishDots() {
+  const track = $("fishTrack");
+  fishIdx = track.clientWidth ? Math.round(Math.abs(track.scrollLeft) / track.clientWidth) : 0;
+  document.querySelectorAll("#fishDots button").forEach((d, i) => d.classList.toggle("on", i === fishIdx));
+}
+function renderFish() {
+  const track = $("fishTrack"); if (!track) return;
+  track.innerHTML = FISH.map(f => {
+    const d = LANG === "he" ? f.he : f.en;
+    return '<div class="fslide">' +
+      '<img src="' + f.img + '" alt="' + d.name + ' - ' + f.latin + '" loading="lazy">' +
+      '<div class="finfo">' +
+        '<div class="fname">' + d.name + '</div>' +
+        '<div class="flatin">' + f.latin + '</div>' +
+        '<div class="frow"><b>' + t("fishActive") + ':</b> ' + d.hours + '</div>' +
+        '<div class="frow"><b>' + t("fishBehavior") + ':</b> ' + d.behavior + '</div>' +
+        '<div class="frow"><b>' + t("fishBait") + ':</b> ' + d.bait + '</div>' +
+      '</div></div>';
+  }).join("");
+  $("fishDots").innerHTML = FISH.map((f, i) =>
+    '<button type="button" aria-label="' + (LANG === "he" ? f.he.name : f.en.name) + '"></button>').join("");
+  document.querySelectorAll("#fishDots button").forEach((d, i) => d.addEventListener("click", () => fishGo(i)));
+  $("fishPrev").setAttribute("aria-label", t("fishPrevAria"));
+  $("fishNext").setAttribute("aria-label", t("fishNextAria"));
+  track.scrollLeft = 0;
+  updateFishDots();
+}
+$("fishPrev").addEventListener("click", () => fishGo(fishIdx - 1));
+$("fishNext").addEventListener("click", () => fishGo(fishIdx + 1));
+$("fishTrack").addEventListener("scroll", () => { clearTimeout(window._fishT); window._fishT = setTimeout(updateFishDots, 60); });
+renderFish();
 setLang(LANG, false);
 $("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
 $("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
