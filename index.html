@@ -97,9 +97,9 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 html[dir="rtl"] h2 { letter-spacing: .05em; }
 
 /* Fish guide slider */
-#fishGuide { grid-column: 1 / -1; }
-.fslider { position: relative; margin-top: 14px; }
-.ftrack { display: flex; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 14px; }
+#fishGuide { grid-column: 1 / -1; min-width: 0; }
+.fslider { position: relative; margin-top: 14px; min-width: 0; }
+.ftrack { display: flex; min-width: 0; overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; border-radius: 14px; }
 .ftrack::-webkit-scrollbar { display: none; }
 .fslide { min-width: 100%; scroll-snap-align: start; display: grid; grid-template-columns: minmax(0, 46%) 1fr; gap: 20px; align-items: center; padding: 8px 46px; }
 .fslide img { width: 100%; display: block; border-radius: 12px; border: 1px solid var(--line); background: #fff; }
