@@ -518,8 +518,8 @@ function weekBars(svg, times, values, dirs) {
   const vals = pts.map(p => p[1]).filter(v => v !== null && v !== undefined);
   if (!vals.length) { svg.innerHTML = ""; svg._barArgs = null; return; }
   const max = Math.max(...vals, 10);
-  const W = Math.max(280, Math.round(svg.clientWidth) || 300), H = 150;
-  const padL = 4, padR = 4, padT = 46, padB = 8;
+  const W = Math.max(280, Math.round(svg.clientWidth) || 300), H = 164;
+  const padL = 4, padR = 4, padT = 60, padB = 8;
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   svg.removeAttribute("preserveAspectRatio");
   const xAt = i => padL + (i / (pts.length - 1)) * (W - padL - padR);
@@ -529,14 +529,16 @@ function weekBars(svg, times, values, dirs) {
   dayInfo.forEach((di, d) => {
     const x0 = xAt(di.first), x1 = d === dayInfo.length - 1 ? W - padR : xAt(dayInfo[d + 1].first);
     if (d > 0) out += `<line x1="${x0.toFixed(1)}" y1="4" x2="${x0.toFixed(1)}" y2="${H - padB}" stroke="var(--line)" stroke-width="1"></line>`;
-    const cx = Math.min(W - padR - 36, Math.max(padL + 36, (x0 + x1) / 2));
+    const cx = Math.min(W - padR - 28, Math.max(padL + 28, (x0 + x1) / 2));
     const dt = new Date(dayKeys[d] + "T12:00");
     const wd = d === 0 && dt.toDateString() === new Date().toDateString() ? t("today") : t("days")[dt.getDay()];
-    out += `<text x="${cx.toFixed(1)}" y="15" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${wd} ${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}</text>`;
+    const fs = Math.min(11, Math.max(8.5, (x1 - x0) / 4.6));
+    out += `<text x="${cx.toFixed(1)}" y="14" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="600" fill="var(--ink)">${wd}</text>`;
+    out += `<text x="${cx.toFixed(1)}" y="28" text-anchor="middle" font-size="${fs.toFixed(1)}" fill="var(--muted)">${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}</text>`;
     if (di.n) {
       const dir = Math.atan2(di.sx / di.n, di.sy / di.n) * 180 / Math.PI; // mean FROM bearing
       const rot = ((dir + 180) % 360) - 90; // arrow glyph points where the waves travel TO
-      out += `<text x="${cx.toFixed(1)}" y="34" text-anchor="middle" font-size="13" fill="var(--ocean)" transform="rotate(${rot.toFixed(0)} ${cx.toFixed(1)} 30)">&#10148;</text>`;
+      out += `<text x="${cx.toFixed(1)}" y="48" text-anchor="middle" font-size="13" fill="var(--ocean)" transform="rotate(${rot.toFixed(0)} ${cx.toFixed(1)} 44)">&#10148;</text>`;
     }
   });
   // Continuous curve + area fill
