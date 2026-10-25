@@ -2,7 +2,7 @@
 
 A static fishing forecast page: weather, barometric pressure trend, wave and swell trends, sea currents (with a current map), moon phase, and a 7-day wave chart.
 
-**Live:** https://mishkazk.github.io/mishfish-forecast/
+**Live:** https://mishkazk.github.io/MishFish-forecast/
 
 ## How it works
 
