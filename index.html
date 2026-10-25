@@ -36,11 +36,10 @@ body::before {
   pointer-events: none;
   background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1440 900' preserveAspectRatio='none'%3E%3Cpath d='M0 470C280 320 460 650 760 500S1180 310 1440 460V900H0Z' fill='%2395c8d5' opacity='.15'/%3E%3Cpath d='M0 600C260 460 500 720 820 570S1190 450 1440 570V900H0Z' fill='%236fadc2' opacity='.12'/%3E%3Cpath d='M0 760C300 570 530 850 870 710S1220 650 1440 710V900H0Z' fill='%234786a4' opacity='.10'/%3E%3C/svg%3E") center bottom / cover no-repeat;
 }
-header, main, footer { width: min(100%, 1000px); margin-inline: auto; }
+header, main, footer { width: min(100%, 1000px); margin-inline: auto; position: relative; z-index: 1; }
 header { position: relative; padding: 72px 0 40px; border-bottom: 1px solid var(--line); margin-bottom: 28px; }
 header::before { content: ""; display: block; width: 48px; height: 4px; background: var(--ocean); border-radius: 10px; margin-bottom: 26px; }
 h1 { font-size: clamp(2.4rem, 6vw, 4rem); line-height: 1.08; letter-spacing: -.055em; font-weight: 750; }
-h1 .fish { letter-spacing: 0; }
 .tagline { margin-top: 14px; color: var(--muted); font-size: clamp(1rem, 2vw, 1.15rem); letter-spacing: .015em; }
 .locbar {
   margin-top: 24px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
@@ -60,7 +59,12 @@ button.ghost:hover { background: #dff0f2; }
 }
 main { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 section { padding: 28px 30px; border: 1px solid rgba(255,255,255,.85); border-radius: 20px; background: rgba(255,255,255,.78); box-shadow: 0 10px 38px rgba(21,77,95,.045); }
-h2 { font-size: .78rem; font-weight: 750; letter-spacing: .16em; text-transform: uppercase; color: var(--ocean); margin-bottom: 16px; }
+h2 {
+  font-size: 1rem; font-weight: 800; letter-spacing: .1em; text-transform: uppercase; color: var(--ink);
+  margin: -28px -30px 16px; padding: 11px 30px;
+  background: linear-gradient(90deg, rgba(8,107,130,.16), rgba(8,107,130,.05));
+  border-bottom: 1px solid var(--line); border-radius: 19px 19px 0 0;
+}
 .big { font-size: 2.1rem; font-weight: 720; letter-spacing: -.02em; line-height: 1.15; }
 .big small { font-size: 1rem; font-weight: 600; color: var(--muted); letter-spacing: 0; }
 .rows { margin-top: 12px; display: flex; flex-direction: column; gap: 7px; font-size: .95rem; }
@@ -85,6 +89,13 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 #flowWrap { position: relative; }
 #flowMap { height: 380px; border-radius: 12px; border: 1px solid var(--line); }
 #flowCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 12px; }
+#windSec { grid-column: 1 / -1; }
+#windWrap { position: relative; direction: ltr; }
+#windMap { height: 380px; border-radius: 12px; border: 1px solid var(--line); }
+#windCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 12px; }
+#bgFishLayer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
+.bg-fish { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform; }
+@media (prefers-reduced-motion: reduce) { #bgFishLayer { display: none; } }
 .hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
 .hits button { text-align: start; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
 .hits button:hover { background: #dff0f2; }
@@ -119,6 +130,7 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
   header { padding: 52px 0 30px; margin-bottom: 22px; }
   main { grid-template-columns: 1fr; gap: 16px; }
   section { padding: 22px; border-radius: 16px; }
+  section h2 { margin: -22px -22px 14px; padding: 9px 22px; border-radius: 15px 15px 0 0; }
   .fslide { grid-template-columns: 1fr; padding: 8px 40px; }
   .big { font-size: 1.8rem; }
 }
@@ -126,12 +138,13 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
 </style>
 </head>
 <body>
+<div id="bgFishLayer" aria-hidden="true"></div>
 <header>
   <div class="langbar">
     <button id="langEn" type="button">EN</button>
     <button id="langHe" type="button" class="ghost">עב</button>
   </div>
-  <h1>MishFish <span class="fish">🎣</span></h1>
+  <h1>MishFish</h1>
   <p class="tagline" data-i18n="tagline">Fishing forecast: weather, pressure, waves and moon.</p>
   <div class="locbar">
     <span><span data-i18n="spotLabel">Spot:</span> <span class="place" id="place">locating...</span></span>
@@ -160,6 +173,15 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
       <canvas id="flowCanvas"></canvas>
     </div>
     <p class="note" data-i18n="flowNote">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
+  </section>
+
+  <section id="windSec">
+    <h2 data-i18n="windTitle">Wind - live flow</h2>
+    <div id="windWrap">
+      <div id="windMap"></div>
+      <canvas id="windCanvas"></canvas>
+    </div>
+    <p class="note" data-i18n="windNote">Streaks drift with the model wind: the direction it blows toward and relative speed at 10 m height. Coarse model data, indicative only.</p>
   </section>
 
   <section id="now">
@@ -233,10 +255,12 @@ en: {
   pickNote: "Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).",
   flowTitle: "Sea currents - live flow",
   flowNote: "Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.",
+  windTitle: "Wind - live flow",
+  windNote: "Streaks drift with the model wind: the direction it blows toward and relative speed at 10 m height. Coarse model data, indicative only.",
   nowTitle: "Right now", pressureTitle: "Pressure", wavesTitle: "Waves & swell",
   tideTitle: "Sea level & tide", moonTitle: "Moon",
   tideNote: "The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more. Numbers show the level compared to the 3-day average.",
-  weekNote: "Max wave height per day, next 7 days:",
+  weekNote: "Wave height over the next 7 days:",
   moonNote: "Computed locally from the date. Full and new moons are the classic high-activity windows.",
   hpaUnit: "hPa (sea level)",
   cmUnit: "cm",
@@ -288,10 +312,12 @@ he: {
   pickNote: "הקש או לחץ על מקום כלשהו במפה כדי לקבוע את נקודת הדיג. החצים מראים את כיוון ומהירות זרם הים (נתוני מודל גסים, פחות אמינים ממש ליד החוף).",
   flowTitle: "זרמי ים - זרימה חיה",
   flowNote: "הפסים נסחפים עם זרם המודל: כיוון ומהירות יחסית. נתוני מודל גסים, להערכה בלבד ופחות אמינים ממש ליד החוף.",
+  windTitle: "רוח - זרימה חיה",
+  windNote: "הפסים נסחפים עם רוח המודל: הכיוון שאליו היא נושבת והמהירות היחסית בגובה 10 מ'. נתוני מודל גסים, להערכה בלבד.",
   nowTitle: "עכשיו", pressureTitle: "לחץ אוויר", wavesTitle: "גלים וסוול",
   tideTitle: "גובה פני הים וגאות", moonTitle: "ירח",
   tideNote: "לים התיכון כמעט אין גאות: התנודה היומית כאן בדרך כלל פחות מ-30 ס״מ, ורוב מה שרואים הוא סחף איטי של גובה פני הים, לא גאות בסגנון האוקיינוס. לדיג, הרוח והזרמים חשובים יותר. הגובה מוצג ביחס לממוצע של 3 הימים.",
-  weekNote: "גובה גל מקסימלי ליום, 7 הימים הבאים:",
+  weekNote: "גובה הגל ב־7 הימים הבאים:",
   moonNote: "מחושב מקומית מהתאריך. ירח מלא ומולד הם חלונות הפעילות הקלאסיים לדיג.",
   hpaUnit: "hPa (מותאם לגובה פני הים)",
   cmUnit: "ס״מ",
@@ -458,34 +484,77 @@ function moonInfo(date) {
   return { age, illum, name, emoji, waxing, toFull, toNew };
 }
 
-function weekBars(svg, times, values) {
-  const days = {}, order = [];
+function weekBars(svg, times, values, dirs) {
+  dirs = dirs || [];
   const today = new Date(); today.setHours(0, 0, 0, 0);
-  times.forEach((t, i) => {
-    const d = new Date(t);
-    if (d < today) return;
-    const key = t.slice(0, 10);
-    if (!(key in days)) { days[key] = -Infinity; order.push(key); }
-    const v = values[i];
-    if (v !== null && v !== undefined && v > days[key]) days[key] = v;
+  let startIdx = -1;
+  for (let i = 0; i < times.length; i++) { if (new Date(times[i]) >= today) { startIdx = i; break; } }
+  if (startIdx < 0) { svg.innerHTML = ""; svg._barArgs = null; return; }
+  const dayKeys = [], seen = new Set(), pts = [];
+  for (let i = startIdx; i < times.length; i++) {
+    const key = times[i].slice(0, 10);
+    if (!seen.has(key)) {
+      if (dayKeys.length >= 7) break;
+      seen.add(key); dayKeys.push(key);
+    }
+    pts.push([times[i], values[i], dirs[i]]);
+  }
+  if (!pts.length) { svg.innerHTML = ""; svg._barArgs = null; return; }
+  svg._barArgs = [times, values, dirs];
+  // Per-day aggregates: span, circular-mean direction, representative midday point
+  const dayInfo = dayKeys.map(() => ({ first: -1, last: -1, sx: 0, sy: 0, n: 0, mid: -1, maxV: -1, maxI: -1 }));
+  pts.forEach((p, i) => {
+    const d = dayKeys.indexOf(p[0].slice(0, 10));
+    const di = dayInfo[d];
+    if (di.first < 0) di.first = i;
+    di.last = i;
+    if (p[2] !== null && p[2] !== undefined) { di.sx += Math.sin(p[2] * Math.PI / 180); di.sy += Math.cos(p[2] * Math.PI / 180); di.n++; }
+    if (p[0].slice(11, 13) === "12" && p[1] !== null && p[1] !== undefined) di.mid = i;
+    if (p[1] !== null && p[1] !== undefined && p[1] > di.maxV) { di.maxV = p[1]; di.maxI = i; }
   });
-  const keys = order.slice(0, 7);
-  if (!keys.length) { svg.innerHTML = ""; svg._barArgs = null; return; }
-  svg._barArgs = [times, values];
-  const max = Math.max(...keys.map(k => days[k] > 0 ? days[k] : 0), 10);
-  const W = Math.max(280, Math.round(svg.clientWidth) || 300), H = 130, pad = 4, labelH = 18, valH = 16;
+  const vals = pts.map(p => p[1]).filter(v => v !== null && v !== undefined);
+  if (!vals.length) { svg.innerHTML = ""; svg._barArgs = null; return; }
+  const max = Math.max(...vals, 10);
+  const W = Math.max(280, Math.round(svg.clientWidth) || 300), H = 150;
+  const padL = 4, padR = 4, padT = 46, padB = 8;
   svg.setAttribute("viewBox", "0 0 " + W + " " + H);
   svg.removeAttribute("preserveAspectRatio");
-  const bw = (W - pad * 2) / keys.length;
+  const xAt = i => padL + (i / (pts.length - 1)) * (W - padL - padR);
+  const yAt = v => padT + (H - padT - padB) * (1 - v / max);
   let out = "";
-  keys.forEach((k, i) => {
-    const v = days[k] > 0 ? days[k] : 0;
-    const bh = (v / max) * (H - labelH - valH - pad);
-    const x = pad + i * bw + 3, y = H - labelH - bh;
-    const wd = t("days")[new Date(k + "T12:00").getDay()];
-    out += `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${(bw - 6).toFixed(1)}" height="${bh.toFixed(1)}" rx="4" fill="var(--ocean)" opacity="${i === 0 ? 0.95 : 0.55}"></rect>`;
-    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${(y - 4).toFixed(1)}" text-anchor="middle" font-size="12" fill="var(--muted)">${Math.round(v)}</text>`;
-    out += `<text x="${(x + (bw - 6) / 2).toFixed(1)}" y="${H - 4}" text-anchor="middle" font-size="11" fill="var(--muted)">${wd}</text>`;
+  // Day dividers + headers (weekday, date, wave-direction arrow)
+  dayInfo.forEach((di, d) => {
+    const x0 = xAt(di.first), x1 = d === dayInfo.length - 1 ? W - padR : xAt(dayInfo[d + 1].first);
+    if (d > 0) out += `<line x1="${x0.toFixed(1)}" y1="4" x2="${x0.toFixed(1)}" y2="${H - padB}" stroke="var(--line)" stroke-width="1"></line>`;
+    const cx = (x0 + x1) / 2;
+    const dt = new Date(dayKeys[d] + "T12:00");
+    const wd = d === 0 && dt.toDateString() === new Date().toDateString() ? t("today") : t("days")[dt.getDay()];
+    out += `<text x="${cx.toFixed(1)}" y="15" text-anchor="middle" font-size="11" font-weight="600" fill="var(--ink)">${wd} ${String(dt.getDate()).padStart(2, "0")}/${String(dt.getMonth() + 1).padStart(2, "0")}</text>`;
+    if (di.n) {
+      const dir = Math.atan2(di.sx / di.n, di.sy / di.n) * 180 / Math.PI; // mean FROM bearing
+      const rot = ((dir + 180) % 360) - 90; // arrow glyph points where the waves travel TO
+      out += `<text x="${cx.toFixed(1)}" y="34" text-anchor="middle" font-size="13" fill="var(--ocean)" transform="rotate(${rot.toFixed(0)} ${cx.toFixed(1)} 30)">&#10148;</text>`;
+    }
+  });
+  // Continuous curve + area fill
+  let dPath = "", started = false;
+  pts.forEach((p, i) => {
+    if (p[1] === null || p[1] === undefined) { started = false; return; }
+    dPath += (started ? "L" : "M") + xAt(i).toFixed(1) + " " + yAt(p[1]).toFixed(1) + " ";
+    started = true;
+  });
+  const firstV = pts.findIndex(p => p[1] !== null && p[1] !== undefined);
+  let lastV = -1;
+  pts.forEach((p, i) => { if (p[1] !== null && p[1] !== undefined) lastV = i; });
+  out += `<path d="${dPath}L${xAt(lastV).toFixed(1)} ${H - padB} L${xAt(firstV).toFixed(1)} ${H - padB} Z" fill="var(--ocean)" opacity="0.18" stroke="none"></path>`;
+  out += `<path d="${dPath}" fill="none" stroke="var(--ocean)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>`;
+  // Labeled dot per day (midday value, else daily max)
+  dayInfo.forEach(di => {
+    const i = di.mid >= 0 ? di.mid : di.maxI;
+    if (i < 0) return;
+    const x = xAt(i), y = yAt(pts[i][1]);
+    out += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="3" fill="#fff" stroke="var(--ocean)" stroke-width="1.6"></circle>`;
+    out += `<text x="${x.toFixed(1)}" y="${(y - 6).toFixed(1)}" text-anchor="middle" font-size="11" fill="var(--muted)">${Math.round(pts[i][1])} ${t("cmUnit")}</text>`;
   });
   svg.innerHTML = out;
 }
@@ -512,6 +581,7 @@ async function load(spot) {
   $("lonIn").value = spot.lon.toFixed(4);
   syncMap(spot);
   syncFlowMap(spot);
+  syncWindMap(spot);
   const fUrl = `https://api.open-meteo.com/v1/forecast?latitude=${spot.lat}&longitude=${spot.lon}` +
     `&current=temperature_2m,weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m` +
     `&hourly=pressure_msl&past_days=1&forecast_days=2&timezone=auto&wind_speed_unit=kmh`;
@@ -559,7 +629,7 @@ async function load(spot) {
     $("wTrend").innerHTML = "";
     $("wRows").innerHTML = `<div>${t("marineBusy")}</div>`;
     spark($("wSpark"), [], [], 0);
-    weekBars($("weekBars"), [], []);
+    weekBars($("weekBars"), [], [], []);
     $("tNow").textContent = "-";
     $("tRows").innerHTML = `<div>${t("marineBusy")}</div>`;
     spark($("tSpark"), [], [], 0);
@@ -591,7 +661,7 @@ async function load(spot) {
       `<div><span class="k">${t("seaTemp")}</span> <span dir="ltr">${fmt(h.sea_surface_temperature[wi],1)} °C</span></div>`;
     const ws0 = Math.max(0, wi - 23);
     spark($("wSpark"), h.wave_height.slice(ws0, wi + 1).map(toCm), wTimes.slice(ws0, wi + 1), wi - ws0, { unit: t("cmUnit"), dec: 0 });
-    weekBars($("weekBars"), wTimes, h.wave_height.map(toCm));
+    weekBars($("weekBars"), wTimes, h.wave_height.map(toCm), h.wave_direction);
 
     // Sea level / tide. The model's absolute level (m vs MSL) carries a local
     // bias here, so show the change from the average of the shown window instead.
@@ -625,7 +695,7 @@ async function load(spot) {
     $("wTrend").innerHTML = "";
     $("wRows").innerHTML = `<div>${t("noMarine")}</div>`;
     spark($("wSpark"), [], [], 0);
-    weekBars($("weekBars"), [], []);
+    weekBars($("weekBars"), [], [], []);
     $("tNow").textContent = "-";
     $("tRows").innerHTML = `<div>${t("noSeaLevel")}</div>`;
     spark($("tSpark"), [], [], 0);
@@ -1062,6 +1132,297 @@ function drawStaticFlow() {
   }
 }
 
+
+// --- Animated wind map (same streak technique as the currents map; wind blows over land too, so no land mask) ---
+let windMap = null, windMarker = null, windField = null, windRAF = 0, windParticles = [], windTimer = null, windVisible = true;
+
+function initWindMap(lat, lon) {
+  windMap = L.map("windMap").setView([lat, lon], 9);
+  L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 18,
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+  }).addTo(windMap);
+  windMarker = L.circleMarker([lat, lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#086b82", fillOpacity: 1 }).addTo(windMap);
+  windMap.on("movestart zoomstart", () => { stopWind(); clearWindCanvas(); });
+  windMap.on("moveend", () => { clearTimeout(windTimer); windTimer = setTimeout(refreshWind, 500); });
+  window.addEventListener("resize", () => { sizeWindCanvas(); });
+  if ("IntersectionObserver" in window) {
+    new IntersectionObserver(es => {
+      windVisible = es[0].isIntersecting;
+      if (windVisible) startWind(); else stopWind();
+    }, { threshold: 0.05 }).observe($("windWrap"));
+  }
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden) stopWind(); else if (windVisible) startWind();
+  });
+  sizeWindCanvas();
+}
+
+function syncWindMap(spot) {
+  if (!windMap) return;
+  windMarker.setLatLng([spot.lat, spot.lon]);
+  windMap.panTo([spot.lat, spot.lon]);
+  clearTimeout(windTimer);
+  windTimer = setTimeout(refreshWind, 600);
+}
+
+function sizeWindCanvas() {
+  const c = $("windCanvas"), w = $("windWrap");
+  const dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+  c.width = Math.max(1, Math.round(w.clientWidth * dpr));
+  c.height = Math.max(1, Math.round(w.clientHeight * dpr));
+  c.style.width = w.clientWidth + "px";
+  c.style.height = w.clientHeight + "px";
+  c.getContext("2d").setTransform(dpr, 0, 0, dpr, 0, 0);
+  if (windField) spawnWindParticles();
+}
+
+function clearWindCanvas() {
+  const c = $("windCanvas"), ctx = c.getContext("2d");
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.clearRect(0, 0, c.width, c.height);
+  ctx.restore();
+}
+
+// Batched wind-field fetch: chunks of 120 coordinate pairs per request.
+function fetchWindGrid(lats, lons) {
+  const CHUNK = 120, reqs = [];
+  for (let i = 0; i < lats.length; i += CHUNK) {
+    reqs.push(fetch("https://api.open-meteo.com/v1/forecast?latitude=" + lats.slice(i, i + CHUNK).join(",") +
+      "&longitude=" + lons.slice(i, i + CHUNK).join(",") +
+      "&hourly=wind_speed_10m,wind_direction_10m&forecast_days=1&timezone=auto&wind_speed_unit=kmh")
+      .then(r => r.json()));
+  }
+  return Promise.all(reqs).then(parts => {
+    const out = [];
+    parts.forEach(p => (Array.isArray(p) ? p : [p]).forEach(x => out.push(x)));
+    return out;
+  });
+}
+
+let windFieldAt = 0;
+function refreshWind(force) {
+  if (!windMap) return;
+  const b = windMap.getBounds();
+  // Same containment cache as the currents field.
+  if (!force && windField &&
+      b.getSouth() >= windField.south && b.getNorth() <= windField.north &&
+      b.getWest() >= windField.west && b.getEast() <= windField.east &&
+      Date.now() - windFieldAt < 600000) {
+    spawnWindParticles();
+    if (reducedMotion()) drawStaticWind(); else startWind();
+    return;
+  }
+  const padLat = (b.getNorth() - b.getSouth()) * 0.2, padLon = (b.getEast() - b.getWest()) * 0.2;
+  const south = Math.max(-85, b.getSouth() - padLat), north = Math.min(85, b.getNorth() + padLat);
+  const west = Math.max(-180, b.getWest() - padLon), east = Math.min(180, b.getEast() + padLon);
+  const cols = FLOW.cols, rows = FLOW.rows, lats = [], lons = [];
+  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
+    lats.push((south + (r + 0.5) / rows * (north - south)).toFixed(3));
+    lons.push((west + (c + 0.5) / cols * (east - west)).toFixed(3));
+  }
+  fetchWindGrid(lats, lons)
+    .then(arr => {
+      const u = new Float32Array(cols * rows), v = new Float32Array(cols * rows), ok = new Uint8Array(cols * rows);
+      let maxSp = 0;
+      arr.forEach((p, i) => {
+        if (!p.hourly || i >= cols * rows) return;
+        const idx = hourIndex(p.hourly.time);
+        const sp = p.hourly.wind_speed_10m[idx], dir = p.hourly.wind_direction_10m[idx];
+        if (sp === null || sp === undefined || dir === null || dir === undefined) return;
+        // Wind direction is where it blows FROM; the streaks follow where it blows TO.
+        const rad = ((dir + 180) % 360) * Math.PI / 180;
+        u[i] = sp * Math.sin(rad); v[i] = sp * Math.cos(rad); ok[i] = 1;
+        if (sp > maxSp) maxSp = sp;
+      });
+      windField = { u, v, ok, cols, rows, maxSp: maxSp || 1, north, south, west, east };
+      windFieldAt = Date.now();
+      spawnWindParticles();
+      if (reducedMotion()) drawStaticWind(); else startWind();
+    })
+    .catch(() => {
+      // Same quiet retry as the currents field (e.g. a temporary API rate limit).
+      clearTimeout(windTimer);
+      windTimer = setTimeout(refreshWind, 65000);
+    });
+}
+
+function sampleWind(lat, lon) {
+  const f = windField;
+  if (!f || lat < f.south || lat > f.north || lon < f.west || lon > f.east) return null;
+  const fx = (lon - f.west) / (f.east - f.west) * f.cols - 0.5;
+  const fy = (lat - f.south) / (f.north - f.south) * f.rows - 0.5;
+  const x0 = Math.floor(fx), y0 = Math.floor(fy);
+  const cx = Math.min(f.cols - 1, Math.max(0, Math.round(fx)));
+  const cy = Math.min(f.rows - 1, Math.max(0, Math.round(fy)));
+  if (!f.ok[cy * f.cols + cx]) return null;
+  let su = 0, sv = 0, sw = 0;
+  for (let dy = 0; dy <= 1; dy++) for (let dx = 0; dx <= 1; dx++) {
+    const x = x0 + dx, y = y0 + dy;
+    if (x < 0 || y < 0 || x >= f.cols || y >= f.rows) continue;
+    const i = y * f.cols + x;
+    if (!f.ok[i]) continue;
+    const w = (1 - Math.abs(fx - x)) * (1 - Math.abs(fy - y));
+    if (w <= 0) continue;
+    su += f.u[i] * w; sv += f.v[i] * w; sw += w;
+  }
+  if (!sw) return null;
+  return [su / sw, sv / sw];
+}
+
+function respawnWind(p) {
+  const f = windField, b = windMap.getBounds();
+  const south = Math.max(f.south, b.getSouth()), north = Math.min(f.north, b.getNorth());
+  const west = Math.max(f.west, b.getWest()), east = Math.min(f.east, b.getEast());
+  let lat = 0, lon = 0, s = null;
+  for (let t = 0; t < 10; t++) {
+    lat = south + Math.random() * (north - south);
+    lon = west + Math.random() * (east - west);
+    s = sampleWind(lat, lon);
+    if (s) break;
+  }
+  const pt = windMap.latLngToContainerPoint([lat, lon]);
+  p.lat = lat; p.lon = lon; p.px = pt.x; p.py = pt.y;
+  p.age = Math.floor(Math.random() * 60);
+  p.maxAge = 120 + Math.floor(Math.random() * 240);
+}
+
+function spawnWindParticles() {
+  if (!windMap || !windField) return;
+  const c = $("windCanvas");
+  const area = c.clientWidth * c.clientHeight;
+  const per = window.innerWidth < 640 ? 1200 : 900;
+  const n = Math.max(80, Math.min(650, Math.round(area / per)));
+  windParticles = Array.from({ length: n }, () => {
+    const p = {};
+    respawnWind(p);
+    return p;
+  });
+}
+
+function windFrame() {
+  windRAF = 0;
+  if (!windField || !windMap) return;
+  const c = $("windCanvas"), ctx = c.getContext("2d");
+  const W = c.clientWidth, H = c.clientHeight;
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.fillStyle = "rgba(0,0,0,0.055)";
+  ctx.fillRect(0, 0, W, H);
+  ctx.globalCompositeOperation = "source-over";
+  ctx.lineWidth = 1.4;
+  ctx.lineCap = "round";
+  const f = windField;
+  const center = windMap.getCenter();
+  const cosLat = Math.max(0.2, Math.cos(center.lat * Math.PI / 180));
+  const kmPerPx = 156.54303392 * cosLat / Math.pow(2, windMap.getZoom());
+  for (const p of windParticles) {
+    const s = sampleWind(p.lat, p.lon);
+    p.age++;
+    if (!s || p.age > p.maxAge) { respawnWind(p); continue; }
+    const sp = Math.hypot(s[0], s[1]);
+    if (sp < 0.02) { if (p.age % 40 === 0) respawnWind(p); continue; }
+    const step = Math.min(2.4, Math.max(0.2, 0.25 + 1.7 * sp / f.maxSp));
+    const dxPx = (s[0] / sp) * step, dyPx = -(s[1] / sp) * step;
+    p.lat += (-dyPx * kmPerPx) / 111.32;
+    p.lon += (dxPx * kmPerPx) / (111.32 * cosLat);
+    const nx = p.px + dxPx, ny = p.py + dyPx;
+    if (nx < -8 || ny < -8 || nx > W + 8 || ny > H + 8) { respawnWind(p); continue; }
+    const a = Math.min(0.92, 0.3 + 0.6 * sp / f.maxSp);
+    ctx.strokeStyle = "rgba(8,107,130," + a.toFixed(2) + ")";
+    ctx.beginPath();
+    ctx.moveTo(p.px, p.py);
+    ctx.lineTo(nx, ny);
+    ctx.stroke();
+    p.px = nx; p.py = ny;
+  }
+  windRAF = requestAnimationFrame(windFrame);
+}
+
+function startWind() {
+  if (windRAF || !windField || document.hidden || !windVisible || reducedMotion()) return;
+  windRAF = requestAnimationFrame(windFrame);
+}
+
+function stopWind() {
+  if (windRAF) { cancelAnimationFrame(windRAF); windRAF = 0; }
+}
+
+function drawStaticWind() {
+  if (!windField || !windMap) return;
+  clearWindCanvas();
+  const c = $("windCanvas"), ctx = c.getContext("2d");
+  const f = windField;
+  ctx.strokeStyle = "rgba(8,107,130,0.8)";
+  ctx.fillStyle = "rgba(8,107,130,0.8)";
+  ctx.lineWidth = 1.4;
+  for (let r = 0; r < f.rows; r++) for (let q = 0; q < f.cols; q++) {
+    const i = r * f.cols + q;
+    if (!f.ok[i]) continue;
+    const lat = f.south + (r + 0.5) / f.rows * (f.north - f.south);
+    const lon = f.west + (q + 0.5) / f.cols * (f.east - f.west);
+    const pt = windMap.latLngToContainerPoint([lat, lon]);
+    const sp = Math.hypot(f.u[i], f.v[i]);
+    const len = Math.min(26, 8 + 10 * sp / f.maxSp);
+    const ang = Math.atan2(f.u[i], f.v[i]); // 0 = north
+    const dx = Math.sin(ang) * len / 2, dy = -Math.cos(ang) * len / 2;
+    ctx.beginPath();
+    ctx.moveTo(pt.x - dx, pt.y - dy);
+    ctx.lineTo(pt.x + dx, pt.y + dy);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(pt.x + dx, pt.y + dy);
+    ctx.lineTo(pt.x + dx - Math.sin(ang - 0.5) * 6, pt.y + dy + Math.cos(ang - 0.5) * 6);
+    ctx.lineTo(pt.x + dx - Math.sin(ang + 0.5) * 6, pt.y + dy + Math.cos(ang + 0.5) * 6);
+    ctx.closePath();
+    ctx.fill();
+  }
+}
+
+// --- Occasional background fish ---
+// Ink-style fish drift across the page background every now and then, behind the content.
+(function bgFish() {
+  if (reducedMotion()) return;
+  const layer = $("bgFishLayer");
+  if (!layer) return;
+  const FISH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60" fill="none" stroke="#086b82" stroke-opacity=".14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
+    '<path d="M10 30 C 30 10, 65 8, 88 26 L 110 12 L 104 30 L 110 48 L 88 34 C 65 52, 30 50, 10 30 Z"/>' +
+    '<path d="M48 22 C 54 28, 54 34, 48 40"/>' +
+    '<path d="M60 14 C 66 8, 74 8, 78 12"/>' +
+    '<circle cx="24" cy="26" r="2.2" fill="#086b82" fill-opacity=".14" stroke="none"/></svg>';
+  function spawnFish(delay) {
+    setTimeout(() => {
+      const el = document.createElement("div");
+      el.className = "bg-fish";
+      const w = 60 + Math.random() * 90;
+      const toRight = Math.random() < 0.5;
+      el.style.width = w + "px";
+      el.style.top = (8 + Math.random() * 78) + "vh";
+      el.innerHTML = FISH_SVG;
+      if (!toRight) el.firstElementChild.style.transform = "scaleX(-1)";
+      layer.appendChild(el);
+      const vw = window.innerWidth;
+      const from = toRight ? -w - 40 : vw + 40;
+      const to = toRight ? vw + 40 : -w - 40;
+      const bob = (Math.random() - 0.5) * 30;
+      const anim = el.animate([
+        { transform: "translate(" + from + "px, 0px)", opacity: 0 },
+        { transform: "translate(" + (from * 0.8 + to * 0.2) + "px, " + bob / 2 + "px)", opacity: 1, offset: 0.12 },
+        { transform: "translate(" + (from + to) / 2 + "px, " + bob + "px)", opacity: 1, offset: 0.5 },
+        { transform: "translate(" + (from * 0.2 + to * 0.8) + "px, " + bob / 2 + "px)", opacity: 1, offset: 0.88 },
+        { transform: "translate(" + to + "px, 0px)", opacity: 1 }
+      ], { duration: 15000 + Math.random() * 12000, easing: "linear" });
+      anim.onfinish = () => el.remove();
+    }, delay);
+  }
+  function school() {
+    const n = 1 + Math.floor(Math.random() * 3);
+    for (let i = 0; i < n; i++) spawnFish(i * (700 + Math.random() * 1600));
+    setTimeout(school, 24000 + Math.random() * 32000);
+  }
+  setTimeout(school, 5000 + Math.random() * 6000);
+})();
+
 window.addEventListener("resize", () => {
   document.querySelectorAll("svg.spark").forEach(s => { if (s._sparkArgs) spark(s, ...s._sparkArgs); if (s._barArgs) weekBars(s, ...s._barArgs); });
 });
@@ -1168,7 +1529,9 @@ $("langEn").addEventListener("click", () => { setLang("en", true); load({ ...SPO
 $("langHe").addEventListener("click", () => { setLang("he", true); load({ ...SPOT, label: SPOT.isDefault ? t("defaultSpot") : SPOT.label }); });
 initMap(DEFAULT.lat, DEFAULT.lon);
 initFlowMap(DEFAULT.lat, DEFAULT.lon);
+initWindMap(DEFAULT.lat, DEFAULT.lon);
 refreshFlow();
+refreshWind();
 load({ ...DEFAULT, isDefault: true, label: t("defaultSpot") });
 $("geoBtn").click();
 </script>
