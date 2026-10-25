@@ -96,6 +96,8 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 #bgFishLayer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .bg-fish { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform; }
 .bg-fish svg { width: 100%; height: auto; display: block; }
+.bg-coral { position: absolute; bottom: 0; }
+.bg-coral svg { width: 100%; height: auto; display: block; }
 @media (prefers-reduced-motion: reduce) { #bgFishLayer { display: none; } }
 .hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
 .hits button { text-align: start; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
@@ -1381,16 +1383,32 @@ function drawStaticWind() {
 }
 
 // --- Occasional background fish ---
-// Ink-style fish drift across the page background every now and then, behind the content.
+// Fish silhouettes swim across the page background every now and then; coral silhouettes sit along the bottom.
 (function bgFish() {
   if (reducedMotion()) return;
   const layer = $("bgFishLayer");
   if (!layer) return;
-  const FISH_SVG = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60" fill="none" stroke="#086b82" stroke-opacity=".14" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">' +
-    '<path d="M10 30 C 30 10, 65 8, 88 26 L 110 12 L 104 30 L 110 48 L 88 34 C 65 52, 30 50, 10 30 Z"/>' +
-    '<path d="M48 22 C 54 28, 54 34, 48 40"/>' +
-    '<path d="M60 14 C 66 8, 74 8, 78 12"/>' +
-    '<circle cx="24" cy="26" r="2.2" fill="#086b82" fill-opacity=".14" stroke="none"/></svg>';
+  // Fish paths are drawn facing right; they are flipped when swimming left.
+  const FISH = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><path fill="#123948" fill-opacity=".16" d="M110 30 C 95 10, 55 4, 34 16 L 8 6 L 16 30 L 8 54 L 34 44 C 55 56, 95 50, 110 30 Z"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><path fill="#123948" fill-opacity=".13" d="M116 30 C 96 20, 50 18, 26 26 L 6 20 L 12 30 L 6 40 L 26 34 C 50 42, 96 40, 116 30 Z"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 60"><path fill="#123948" fill-opacity=".16" d="M104 30 C 92 8, 60 2, 44 14 L 38 4 L 34 16 L 10 10 L 16 30 L 10 50 L 34 44 L 38 56 L 44 46 C 60 58, 92 52, 104 30 Z"/></svg>'
+  ];
+  const CORALS = [
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#000" stroke-opacity=".1" stroke-width="6" stroke-linecap="round"><path d="M50 98 L50 60 M50 60 C50 48 40 46 34 36 M50 72 C50 62 60 60 66 50 M50 60 C50 50 56 46 55 38 M50 84 C50 76 42 74 37 66 M34 36 C30 30 32 24 30 18 M66 50 C70 44 68 38 72 32"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#000" stroke-opacity=".09" stroke-width="5" stroke-linecap="round"><path d="M25 98 C19 78 31 68 25 48 C19 33 27 22 25 8 M50 98 C45 80 55 70 50 52 C45 38 52 28 50 14 M75 98 C70 82 80 72 75 56 C70 44 77 36 75 24"/></svg>',
+    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><path fill="#000" fill-opacity=".08" d="M50 98 C32 88 16 68 19 42 C40 52 46 72 50 98 C54 72 60 52 81 42 C84 68 68 88 50 98 Z"/></svg>'
+  ];
+  // Static coral garden along the bottom of the background.
+  [[4, 150, 0], [20, 100, 2], [38, 180, 1], [58, 120, 2], [74, 160, 0], [90, 110, 1]].forEach((cfg, i) => {
+    const el = document.createElement("div");
+    el.className = "bg-coral";
+    el.style.left = cfg[0] + "%";
+    el.style.width = Math.round(cfg[1] * 0.8) + "px";
+    el.innerHTML = CORALS[cfg[2]];
+    if (i % 2) el.firstElementChild.style.transform = "scaleX(-1)";
+    layer.appendChild(el);
+  });
   function spawnFish(delay) {
     setTimeout(() => {
       const el = document.createElement("div");
@@ -1399,7 +1417,7 @@ function drawStaticWind() {
       const toRight = Math.random() < 0.5;
       el.style.width = w + "px";
       el.style.top = (8 + Math.random() * 78) + "vh";
-      el.innerHTML = FISH_SVG;
+      el.innerHTML = FISH[Math.floor(Math.random() * FISH.length)];
       if (!toRight) el.firstElementChild.style.transform = "scaleX(-1)";
       layer.appendChild(el);
       const vw = window.innerWidth;
@@ -1411,7 +1429,7 @@ function drawStaticWind() {
         { transform: "translate(" + (from * 0.8 + to * 0.2) + "px, " + bob / 2 + "px)", opacity: 1, offset: 0.12 },
         { transform: "translate(" + (from + to) / 2 + "px, " + bob + "px)", opacity: 1, offset: 0.5 },
         { transform: "translate(" + (from * 0.2 + to * 0.8) + "px, " + bob / 2 + "px)", opacity: 1, offset: 0.88 },
-        { transform: "translate(" + to + "px, 0px)", opacity: 1 }
+        { transform: "translate(" + to + "px, 0px)", opacity: 0 }
       ], { duration: 15000 + Math.random() * 12000, easing: "linear" });
       anim.onfinish = () => el.remove();
     }, delay);
