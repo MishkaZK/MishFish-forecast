@@ -95,6 +95,7 @@ footer { text-align: center; padding: 30px 12px 38px; color: var(--muted); font-
 #windCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 12px; }
 #bgFishLayer { position: fixed; inset: 0; z-index: 0; pointer-events: none; overflow: hidden; }
 .bg-fish { position: absolute; left: 0; top: 0; opacity: 0; will-change: transform; }
+.bg-fish svg { width: 100%; height: auto; display: block; }
 @media (prefers-reduced-motion: reduce) { #bgFishLayer { display: none; } }
 .hits { width: 100%; display: flex; flex-direction: column; gap: 5px; }
 .hits button { text-align: start; color: var(--ink); background: #edf6f7; border: 1px solid var(--line); font-weight: 500; }
