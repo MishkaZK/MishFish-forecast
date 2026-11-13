@@ -108,7 +108,7 @@ button.icon svg { width: 15px; height: 15px; }
 .err { color: #ffb3aa; background: rgba(255,127,112,.1); border: 1px solid rgba(255,127,112,.3); border-radius: 12px; padding: 10px 14px; font-size: .9rem; display: none; margin-top: 12px; }
 
 /* ---------- At a glance strip ---------- */
-.glance { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin: 22px 0 8px; }
+.glance { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-top: 8px; }
 .tile { position: relative; padding: 14px 16px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); box-shadow: var(--shadow); overflow: hidden; min-width: 0; }
 .tile::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, var(--card-top), transparent 45%); pointer-events: none; }
 .tile .lbl { font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); font-weight: 700; display: flex; align-items: center; gap: 6px; }
@@ -129,7 +129,8 @@ section > * { position: relative; }
 #now, #pressure, #moon { grid-column: span 2; }
 #waves { grid-column: span 4; }
 #tide { grid-column: span 2; }
-#mapsSec, #fishGuide { grid-column: 1 / -1; }
+#mapSec, #fishGuide, .glance { grid-column: 1 / -1; }
+#flowSec, #windSec { grid-column: span 3; }
 h2 {
   display: flex; align-items: center; gap: 9px;
   font-size: .78rem; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
@@ -164,14 +165,8 @@ body.loading .big small, body.loading .tile .val small { color: transparent !imp
 @keyframes shimmer { to { background-position: -200% 0; } }
 
 /* ---------- Maps (tabbed) ---------- */
-.tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: rgba(3, 20, 34, .5); border: 1px solid var(--line); width: fit-content; max-width: 100%; margin-bottom: 14px; }
-.tabs button { background: transparent; color: var(--muted); border-radius: 9px; padding: 7px 14px; font-size: .85rem; display: inline-flex; align-items: center; gap: 7px; }
-.tabs button svg { width: 14px; height: 14px; }
-.tabs button:hover { color: var(--ink); background: rgba(255,255,255,.06); box-shadow: none; }
-.tabs button.on { background: var(--ocean); color: #04202f; }
-.panel { display: none; }
-.panel.on { display: block; }
-#map, #flowMap, #windMap { height: 420px; border-radius: 14px; border: 1px solid var(--line-strong); background: #0b2238; }
+#map { height: 440px; }
+#map, #flowMap, #windMap { height: 380px; border-radius: 14px; border: 1px solid var(--line-strong); background: #0b2238; }
 #flowWrap, #windWrap { position: relative; direction: ltr; }
 #flowCanvas, #windCanvas { position: absolute; inset: 0; z-index: 500; pointer-events: none; border-radius: 14px; }
 #map, #flowWrap { direction: ltr; }
@@ -210,7 +205,7 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
   main { grid-template-columns: 1fr 1fr; }
   section, #now, #pressure, #moon, #waves, #tide { grid-column: span 1; }
   #waves { grid-column: 1 / -1; }
-  #mapsSec, #fishGuide { grid-column: 1 / -1; }
+  #mapSec, #fishGuide, #flowSec, #windSec { grid-column: 1 / -1; }
   .glance { grid-template-columns: repeat(3, 1fr); }
 }
 @media (max-width: 640px) {
@@ -219,7 +214,7 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
   main { grid-template-columns: 1fr; gap: 12px; }
   section, #now, #pressure, #moon, #waves, #tide { grid-column: 1 / -1; }
   section { padding: 18px 18px 20px; border-radius: 16px; }
-  .glance { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -14px; padding-inline: 14px; }
+  .glance { display: flex; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; margin-inline: -14px; padding-inline: 14px; width: auto; }
   .glance::-webkit-scrollbar { display: none; }
   .tile { flex: 0 0 46%; scroll-snap-align: start; }
   .coords { width: 100%; }
@@ -227,8 +222,6 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
   .fslide { grid-template-columns: 1fr; padding: 8px 40px; gap: 14px; }
   .big { font-size: 1.9rem; }
   #map, #flowMap, #windMap { height: 340px; }
-  .tabs { width: 100%; }
-  .tabs button { flex: 1; justify-content: center; padding-inline: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } body.loading .big, body.loading .tile .val { animation: none; } }
 </style>
@@ -270,6 +263,33 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
   </div>
   <div class="err" id="errBox"></div>
 
+</header>
+
+<main>
+  <section id="mapSec">
+    <h2 data-i18n="pickSpot">Pick a spot</h2>
+    <div id="map"></div>
+    <p class="note" data-i18n="pickNote">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
+  </section>
+
+  <section id="flowSec">
+    <h2 data-i18n="flowTitle">Sea currents - live flow</h2>
+    <div id="flowWrap">
+      <div id="flowMap"></div>
+      <canvas id="flowCanvas"></canvas>
+    </div>
+    <p class="note" data-i18n="flowNote">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
+  </section>
+
+  <section id="windSec">
+    <h2 data-i18n="windTitle">Wind - live flow</h2>
+    <div id="windWrap">
+      <div id="windMap"></div>
+      <canvas id="windCanvas"></canvas>
+    </div>
+    <p class="note" data-i18n="windNote">Streaks drift with the model wind: the direction it blows toward and relative speed at 10 m height. Coarse model data, indicative only.</p>
+  </section>
+
   <div class="glance" aria-label="at a glance">
     <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0Z"/></svg><span data-i18n="gTemp">Air</span></div><div class="val" id="gTemp">-</div><div class="sub" id="gTempSub">&nbsp;</div></div>
     <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 18h7a2 2 0 1 1-2 2"/></svg><span data-i18n="gWind">Wind</span></div><div class="val" id="gWind">-</div><div class="sub" id="gWindSub">&nbsp;</div></div>
@@ -277,9 +297,6 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
     <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 13l3.5-3.5M12 2v2"/></svg><span data-i18n="gPress">Pressure</span></div><div class="val" id="gPress">-</div><div class="sub" id="gPressSub">&nbsp;</div></div>
     <div class="tile"><div class="lbl"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M14 3a9 9 0 1 0 7 14.5A7 7 0 0 1 14 3Z"/></svg><span data-i18n="gMoon">Moon</span></div><div class="val" id="gMoon">-</div><div class="sub" id="gMoonSub">&nbsp;</div></div>
   </div>
-</header>
-
-<main>
   <section id="now">
     <h2 data-i18n="nowTitle">Right now</h2>
     <div class="big" id="nowTemp">-</div>
@@ -318,33 +335,6 @@ html[dir="rtl"] .fbtn { transform: translateY(-50%) scaleX(-1); }
     <div class="rows" id="tRows"></div>
     <svg class="spark" id="tSpark" viewBox="0 0 300 64" preserveAspectRatio="none" aria-hidden="true"></svg>
     <p class="note" data-i18n="tideNote">The Mediterranean barely has tides: the daily swing here is usually under 30 cm, and most of what you see is slow sea-level drift, not Atlantic-style tides. For fishing, wind and currents matter more.</p>
-  </section>
-
-  <section id="mapsSec">
-    <h2 data-i18n="mapsTitle">Maps</h2>
-    <div class="tabs" role="tablist">
-      <button type="button" class="on" data-tab="spot" role="tab" aria-selected="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/></svg><span data-i18n="tabSpot">Pick a spot</span></button>
-      <button type="button" data-tab="flow" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M2 12c2.5-3 5-3 7.5 0s5 3 7.5 0 5-3 5 0M2 18c2.5-3 5-3 7.5 0s5 3 7.5 0 5-3 5 0"/></svg><span data-i18n="tabFlow">Currents</span></button>
-      <button type="button" data-tab="wind" role="tab" aria-selected="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M3 8h11a3 3 0 1 0-3-3M3 13h15a3 3 0 1 1-3 3M3 18h7a2 2 0 1 1-2 2"/></svg><span data-i18n="tabWind">Wind</span></button>
-    </div>
-    <div class="panel on" id="panel-spot" role="tabpanel">
-      <div id="map"></div>
-      <p class="note" data-i18n="pickNote">Tap or click anywhere on the map to set the fishing spot. Arrows show sea current direction and speed (coarse model data, less reliable right at the coast).</p>
-    </div>
-    <div class="panel" id="panel-flow" role="tabpanel">
-      <div id="flowWrap">
-        <div id="flowMap"></div>
-        <canvas id="flowCanvas"></canvas>
-      </div>
-      <p class="note" data-i18n="flowNote">Streaks drift with the model current: direction and relative speed. Coarse model data, indicative only and less reliable right at the coast.</p>
-    </div>
-    <div class="panel" id="panel-wind" role="tabpanel">
-      <div id="windWrap">
-        <div id="windMap"></div>
-        <canvas id="windCanvas"></canvas>
-      </div>
-      <p class="note" data-i18n="windNote">Streaks drift with the model wind: the direction it blows toward and relative speed at 10 m height. Coarse model data, indicative only.</p>
-    </div>
   </section>
 
   <section id="fishGuide">
@@ -419,7 +409,6 @@ en: {
   errGeoDenied: m => "Location unavailable (" + m + "). Showing the default spot - enter coordinates to pick another.",
   errLatLon: "Enter a valid latitude (-90..90) and longitude (-180..180).",
   defaultSpot: "Rishon LeTsiyyon beach (default)",
-  mapsTitle: "Maps", tabSpot: "Pick a spot", tabFlow: "Sea currents", tabWind: "Wind",
   gTemp: "Air", gWind: "Wind", gWave: "Waves", gPress: "Pressure", gMoon: "Moon",
   gNoData: "no data", gFull: "full in", gNew: "new in", gDays: "d", gLit: "lit",
   fishGuideTitle: "Fish guide - what's biting here",
@@ -479,7 +468,6 @@ he: {
   errGeoDenied: m => "המיקום לא זמין (" + m + "). מוצגת נקודת ברירת המחדל - הזן קואורדינטות כדי לבחור נקודה אחרת.",
   errLatLon: "הזן קו רוחב (-90..90) וקו אורך (-180..180) תקינים.",
   defaultSpot: "חוף ראשון לציון (ברירת מחדל)",
-  mapsTitle: "מפות", tabSpot: "בחר נקודה", tabFlow: "זרמי ים", tabWind: "רוח",
   gTemp: "אוויר", gWind: "רוח", gWave: "גלים", gPress: "לחץ", gMoon: "ירח",
   gNoData: "אין נתונים", gFull: "מלא בעוד", gNew: "מולד בעוד", gDays: "ימים", gLit: "מואר",
   fishGuideTitle: "מדריך דגים - מה נתפס כאן",
@@ -1087,9 +1075,8 @@ function fetchGrid(lats, lons) {
 }
 
 let flowFieldAt = 0;
-const panelShown = id => { const el = $(id); return !!(el && el.offsetParent !== null); };
 function refreshFlow(force) {
-  if (!flowMap || !panelShown("flowWrap")) return;
+  if (!flowMap) return;
   const b = flowMap.getBounds();
   // Containment cache: while the view stays inside the fetched field (and it's fresh),
   // reuse it instead of refiring hundreds of API calls on every small pan or zoom.
@@ -1346,7 +1333,7 @@ function fetchWindGrid(lats, lons) {
 
 let windFieldAt = 0;
 function refreshWind(force) {
-  if (!windMap || !panelShown("windWrap")) return;
+  if (!windMap) return;
   const b = windMap.getBounds();
   // Same containment cache as the currents field.
   if (!force && windField &&
@@ -1646,24 +1633,8 @@ initMap(DEFAULT.lat, DEFAULT.lon);
 initFlowMap(DEFAULT.lat, DEFAULT.lon);
 initWindMap(DEFAULT.lat, DEFAULT.lon);
 
-// --- Map tabs: one section, three maps. Hidden Leaflet maps have no size, so each
-// switch re-measures the map + its canvas and (re)loads the flow field on demand.
-function showTab(name) {
-  document.querySelectorAll(".tabs [data-tab]").forEach(b => {
-    const on = b.dataset.tab === name;
-    b.classList.toggle("on", on); b.setAttribute("aria-selected", on ? "true" : "false");
-  });
-  ["spot", "flow", "wind"].forEach(n => $("panel-" + n).classList.toggle("on", n === name));
-  try { localStorage.setItem("mishfish-tab", name); } catch (e) {}
-  if (name === "spot") { map.invalidateSize(); map.setView([SPOT.lat, SPOT.lon]); refreshCurrents(); }
-  if (name === "flow") { flowMap.invalidateSize(); flowMap.setView([SPOT.lat, SPOT.lon]); sizeFlowCanvas(); refreshFlow(); }
-  if (name === "wind") { windMap.invalidateSize(); windMap.setView([SPOT.lat, SPOT.lon]); sizeWindCanvas(); refreshWind(); }
-}
-document.querySelectorAll(".tabs [data-tab]").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
-let savedTab = "spot";
-try { savedTab = localStorage.getItem("mishfish-tab") || "spot"; } catch (e) {}
-if (!["spot", "flow", "wind"].includes(savedTab)) savedTab = "spot";
-showTab(savedTab);
+refreshFlow();
+refreshWind();
 load({ ...DEFAULT, isDefault: true, label: t("defaultSpot") });
 $("geoBtn").click();
 </script>
