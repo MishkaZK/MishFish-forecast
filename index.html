@@ -174,6 +174,7 @@ body.loading .big small, body.loading .tile .val small { color: transparent !imp
 .leaflet-control-attribution { font-size: 10px !important; }
 .cur-arrow { background: transparent; border: none; }
 .cur-arrow span { color: #0b7fa0; text-shadow: 0 0 4px #fff, 0 0 2px #fff; }
+.leaflet-dark .leaflet-tile-pane { filter: invert(1) hue-rotate(195deg) brightness(.78) contrast(.95) saturate(.7); }
 .leaflet-dark .cur-arrow span { color: var(--ocean); text-shadow: 0 0 6px rgba(0,0,0,.8); }
 .leaflet-dark .leaflet-control-attribution { background: rgba(6,22,38,.7); color: var(--muted); }
 .leaflet-dark .leaflet-control-attribution a { color: var(--ocean); }
@@ -837,15 +838,16 @@ async function load(spot) {
   refreshCurrents();
 }
 
+// Plain OpenStreetMap tiles: no API key. The flow maps are darkened with a CSS filter (.leaflet-dark).
 const TILES = {
-  light: "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
-  dark: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
+  light: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  dark: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  attr: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
 };
 let map = null, marker = null;
 function initMap(lat, lon) {
   map = L.map("map").setView([lat, lon], 9);
-  L.tileLayer(TILES.light, { maxZoom: 19, attribution: TILES.attr }).addTo(map);
+  L.tileLayer(TILES.light, { maxZoom: 18, attribution: TILES.attr }).addTo(map);
   marker = L.marker([lat, lon]).addTo(map);
   map.on("click", e => {
     load({ lat: e.latlng.lat, lon: e.latlng.lng, label: e.latlng.lat.toFixed(3) + ", " + e.latlng.lng.toFixed(3) });
@@ -1012,7 +1014,7 @@ function onLand(lat, lon) {
 
 function initFlowMap(lat, lon) {
   flowMap = L.map("flowMap").setView([lat, lon], 9);
-  L.tileLayer(TILES.dark, { maxZoom: 19, attribution: TILES.attr }).addTo(flowMap);
+  L.tileLayer(TILES.dark, { maxZoom: 18, attribution: TILES.attr }).addTo(flowMap);
   flowMap.getContainer().classList.add("leaflet-dark");
   flowMarker = L.circleMarker([lat, lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#4fd1ff", fillOpacity: 1 }).addTo(flowMap);
   flowMap.on("movestart zoomstart", () => { stopFlow(); clearFlowCanvas(); });
@@ -1270,7 +1272,7 @@ let windMap = null, windMarker = null, windField = null, windRAF = 0, windPartic
 
 function initWindMap(lat, lon) {
   windMap = L.map("windMap").setView([lat, lon], 9);
-  L.tileLayer(TILES.dark, { maxZoom: 19, attribution: TILES.attr }).addTo(windMap);
+  L.tileLayer(TILES.dark, { maxZoom: 18, attribution: TILES.attr }).addTo(windMap);
   windMap.getContainer().classList.add("leaflet-dark");
   windMarker = L.circleMarker([lat, lon], { radius: 6, color: "#fff", weight: 2, fillColor: "#4fd1ff", fillOpacity: 1 }).addTo(windMap);
   windMap.on("movestart zoomstart", () => { stopWind(); clearWindCanvas(); });
